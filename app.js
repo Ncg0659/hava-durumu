@@ -237,8 +237,8 @@
     for (i = start; i < end; i++) {
       var day = h.is_day[i] === 1, info = describe(h.weather_code[i], day), p = h.precipitation_probability[i] || 0, w = h.wind_speed_10m[i] || 0, now = i === start;
       out += '<li class="hr' + (now ? ' now' : day ? '' : ' night') + '"><span class="hr-t">' + (now ? 'Şimdi' : hm(h.time[i])) + '</span>' +
-        weatherIcon(info.kind, day, now ? 44 : 38, now && wantAnim) + '<b>' + deg(h.temperature_2m[i]) + '</b>' +
-        '<span class="hr-p">' + (p >= 10 ? '%' + round(p) : '&nbsp;') + '</span><span class="hr-g"><i style="width:' + (p >= 10 ? round(p) : 0) + '%"></i></span>' +
+        weatherIcon(info.kind, day, 34, now && wantAnim) + '<b>' + deg(h.temperature_2m[i]) + '</b>' +
+        '<span class="hr-p">' + (p >= 10 ? '%' + round(p) : '&nbsp;') + '</span>' +
         (anyWind ? '<span class="hr-w">' + (w >= 30 ? uiIcon('wind', 12) + round(w) : '&nbsp;') + '</span>' : '') + '</li>';
     }
     return '<section class="card" aria-labelledby="h-hr"><h2 id="h-hr">Saatlik tahmin</h2><ul class="strip">' + out + '</ul></section>';
