@@ -4,11 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1668c9">
-<link rel="icon" href="data:,">
+<!--pwa-start-->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="application-name" content="Hava Durumum">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hava">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="icons/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<!--pwa-end-->
 <title>Hava Durumum</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="splash" data-theme="clear-day" aria-hidden="true"><svg viewBox="70 60 360 340" width="108" height="102" focusable="false"><g stroke="#FFC93C" stroke-width="20" stroke-linecap="round"><line x1="284" y1="188" x2="312" y2="188"/><line x1="258" y1="250" x2="278" y2="270"/><line x1="196" y1="276" x2="196" y2="304"/><line x1="134" y1="250" x2="114" y2="270"/><line x1="108" y1="188" x2="80" y2="188"/><line x1="134" y1="126" x2="114" y2="106"/><line x1="196" y1="100" x2="196" y2="72"/><line x1="258" y1="126" x2="278" y2="106"/></g><circle cx="196" cy="188" r="64" fill="#FFC93C"/><g fill="#EDF3F9"><circle cx="196" cy="332" r="58"/><circle cx="276" cy="298" r="82"/><circle cx="358" cy="332" r="58"/><rect x="196" y="332" width="162" height="58" rx="29"/></g></svg><p>Hava Durumum</p></div>
+<script>
+/* Açılışta beyaz/boş ekran olmasın: son temanın rengi ilk boyamadan önce uygulanır */
+(function () { try { var n = localStorage.getItem('hd2:themeName'), c = localStorage.getItem('hd2:themeColor');
+  if (n) document.getElementById('splash').setAttribute('data-theme', n);
+  if (c) document.querySelector('meta[name="theme-color"]').setAttribute('content', c); } catch (e) {} })();
+</script>
 <div id="sky" aria-hidden="true">
   <div class="sky-layer" data-theme="clear-day"></div>
   <div class="sky-layer" data-theme="clear-night"></div>
@@ -40,6 +68,7 @@
     (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)</p>
     <p>Hava kalitesi: Open-Meteo, <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noopener">CAMS ENSEMBLE</a> verisi. Copernicus Atmosphere Monitoring Service bilgilerinden türetilmiştir.</p>
     <p>Harita: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a>, veri <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap katkıcıları</a> · Radar: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a></p>
+    <p class="ver" id="ver"></p>
   </footer>
 </main>
 
@@ -54,5 +83,6 @@
 <script src="icons.js"></script>
 <script src="insights.js"></script>
 <script src="app.js"></script>
+<script src="pwa.js"></script>
 </body>
 </html>

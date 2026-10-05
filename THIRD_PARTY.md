@@ -16,3 +16,7 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 - `insights.js`: günlük özet, aktivite önerileri, hava kalitesi sınıfları. Kural tabanlı JavaScript; dış servis çağırmaz.
 - `mapview.js`, `sw.js`: harita/radar arayüzü ve yalnızca radar karoları için önbellek. Üçüncü taraf kod kopyalanmadı.
 - GitHub projelerinden (julianverse-weather dahil) hiçbir kod kopyalanmadı.
+
+## Aşama 3 (PWA)
+- Uygulama simgeleri (`icons/`) ve iPhone açılış görselleri (`icons/splash/`) bu projede çizilmiş özgün çalışmalardır (`tools/make_icons.py`, `tools/make_splash.py`); üçüncü taraf simge/görsel kullanılmadı.
+- `sw.js` yalnızca bu sitenin kendi dosyalarını önbelleğe alır. OpenFreeMap, OpenStreetMap, RainViewer ve Open-Meteo yanıtları servis çalışanından geçirilmez ve saklanmaz; bu hizmetlerin kendi önbellek/kullanım kuralları geçerlidir.

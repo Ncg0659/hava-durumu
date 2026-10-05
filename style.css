@@ -364,3 +364,22 @@ html.lock, html.lock body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ================= Aşama 3: PWA ================= */
+/* Açılış ekranı: son temanın renginde; veri gelince solarak kalkar */
+#splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none; transition: opacity .45s ease; }
+#splash p { font-size: 20px; font-weight: 650; letter-spacing: .2px; }
+#splash svg { filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .25)); }
+#splash.out { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { #splash { transition: none; } }
+/* Eski (çevrimdışı) veri gösterilirken ana kart soluk durur */
+#content.is-stale .hero .nowrow { opacity: .7; }
+.foot .ver { font-size: 11.5px; opacity: .8; }
+/* Güncelleme / kurulum bildirimleri */
+#pwaBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); pointer-events: none; }
+#pwaBar:empty { display: none; }
+.pwa-pill { pointer-events: auto; width: 100%; max-width: 536px; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 18px; background: rgba(9, 20, 41, .86); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .3); font-size: 14px; animation: rise .35s cubic-bezier(.2, .7, .2, 1); }
+.pwa-pill > svg { flex: none; }
+.pwa-pill .t { flex: 1; min-width: 0; line-height: 1.3; }
+.pwa-pill .btn { min-height: 34px; }
+.pwa-x { flex: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink-2); }

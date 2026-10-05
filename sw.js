@@ -1,53 +1,79 @@
-/* Radar karolarını önbelleğe alan servis çalışanı (yalnızca https/localhost'ta çalışır).
-   Yalnızca RainViewer radar karolarına dokunur. Karo yolu zaman damgası içerdiği için değişmez;
-   en fazla 120 karo tutulur, eskiler silinir.
-   OpenStreetMap karoları KULLANILMIYOR ve önbelleğe alınmıyor; harita altlığı (OpenFreeMap) tarayıcının
-   normal HTTP önbelleğini kullanır, yani sağlayıcının verdiği önbellek başlıklarına uyulur.
-   Karolar normal (CORS) istekle alınır; CORS yoksa önbelleğe ALINMAZ, istek olduğu gibi geçer. */
-'use strict';
-var RADAR_CACHE = 'hd2-radar-v1';
-var RADAR_MAX = 120;
+/* Hava Durumum: servis çalışanı (yalnızca https/localhost'ta çalışır).
 
-function kindOf(urlStr) {
-  return new URL(urlStr).hostname === 'tilecache.rainviewer.com' ? 'radar' : null;
-}
-function fresh() { return true; } // radar karo adresi değişmez
-function trim(cache, max) {
-  return cache.keys().then(function (keys) {
-    var extra = keys.length - max, i, jobs = [];
-    for (i = 0; i < extra; i++) jobs.push(cache.delete(keys[i])); // en eski eklenenler başta
-    return Promise.all(jobs);
+   NE ÖNBELLEKLENİR: yalnızca bu sitenin kendi dosyaları (HTML, CSS, JS, ikonlar, manifest; harita dosyaları
+   MapLibre + mapview.js ilk kullanımda). Böylece uygulama arayüzü çevrimdışıyken de açılır.
+
+   NE ÖNBELLEKLENMEZ (özellikle): başka bir siteye giden hiçbir istek bu dosyadan geçmez; yani
+   OpenFreeMap karoları/stili, OpenStreetMap, RainViewer radar, Open-Meteo / hava kalitesi / şehir arama
+   yanıtları servis çalışanı tarafından saklanmaz. Üçüncü taraf hizmetlerin kendi önbellek kuralları geçerlidir.
+
+   SÜRÜMLEME: BUILD, derleme sırasında dosya içeriklerinden hesaplanır (tools/build.mjs). Herhangi bir dosya
+   değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
+   Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
+'use strict';
+var BUILD = 'e1a5494f';
+var PREFIX = 'hd2-shell-';
+var CACHE = PREFIX + BUILD;
+var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'insights.js', 'pwa.js', 'manifest.webmanifest',
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png',
+  'icons/apple-touch-icon.png', 'icons/favicon-32.png', 'icons/favicon-64.png'];
+var LAZY = /\/(vendor\/maplibre\/[^/]+|mapview\.js)$/;   // ilk kullanımda önbelleğe girer
+
+function scopeUrl(p) { return new URL(p, self.registration.scope).href; }
+
+function precache() {
+  return caches.keys().then(function (keys) {
+    var first = !keys.some(function (k) { return k.indexOf(PREFIX) === 0; });   // daha önce kabuk önbelleği yoksa
+    return caches.open(CACHE).then(function (cache) {
+      return Promise.all(CORE.map(function (p) {
+        // 'reload': tarayıcının HTTP önbelleğine bakma, sunucudaki güncel dosyayı al
+        return fetch(new Request(scopeUrl(p), { cache: 'reload' })).then(function (res) {
+          if (!res.ok) throw new Error(p + ' ' + res.status);
+          var jobs = [cache.put(scopeUrl(p), res.clone())];
+          if (p === 'index.html') jobs.push(cache.put(self.registration.scope, res.clone()));   // "/hava-durumu/" adresi de aynı sayfa
+          return Promise.all(jobs);
+        });
+      }));
+    }).then(function () { if (first) return self.skipWaiting(); });   // ilk kurulum: bekletmeye gerek yok
   });
 }
-function handle(req, kind, waitUntil) {
-  var name = RADAR_CACHE, max = RADAR_MAX;
-  return caches.open(name).then(function (cache) {
-    return cache.match(req.url).then(function (hit) {
-      if (hit && fresh(hit, kind)) return hit;
-      return fetch(req.url, { mode: 'cors', credentials: 'omit' }).then(function (res) {
-        if (res && res.ok) waitUntil(cache.put(req.url, res.clone()).then(function () { return trim(cache, max); }));
-        return res;
-      }).catch(function () {
-        if (hit) return hit;       // çevrimdışı: eski karo hiç yoktan iyidir
-        return fetch(req);         // CORS yoksa normal istek (önbelleğe alınmaz)
-      });
+
+function handle(req) {
+  var url = new URL(req.url);
+  if (req.mode === 'navigate') {
+    return caches.match(scopeUrl('index.html'), { ignoreSearch: true }).then(function (hit) { return hit || fetch(req); });
+  }
+  return caches.match(req.url).then(function (hit) {
+    if (hit) return hit;
+    return fetch(req).then(function (res) {
+      if (res && res.ok && res.type === 'basic' && LAZY.test(url.pathname)) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { return c.put(req.url, copy); }).catch(function () {});
+      }
+      return res;
     });
   });
 }
 
+function mine(req) {
+  if (req.method !== 'GET') return false;
+  var url = new URL(req.url);
+  if (url.origin !== self.location.origin) return false;                          // başka siteler: dokunma
+  return url.pathname.indexOf(new URL(self.registration.scope).pathname) === 0;   // yalnızca /hava-durumu/ altı
+}
+
 if (typeof self !== 'undefined' && self.addEventListener) {
-  self.addEventListener('install', function () { self.skipWaiting(); });
+  self.addEventListener('install', function (e) { e.waitUntil(precache()); });
   self.addEventListener('activate', function (e) {
     e.waitUntil(caches.keys().then(function (ks) {
-      return Promise.all(ks.filter(function (k) { return k.indexOf('hd2-') === 0 && k !== RADAR_CACHE; }).map(function (k) { return caches.delete(k); }));
+      // eski sürümler ve önceki radar önbelleği (hd2-radar-v1) silinir
+      return Promise.all(ks.filter(function (k) { return k.indexOf('hd2-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); }));
   });
+  self.addEventListener('message', function (e) { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
   self.addEventListener('fetch', function (e) {
-    var req = e.request;
-    if (req.method !== 'GET') return;
-    var kind = kindOf(req.url);
-    if (!kind) return;
-    e.respondWith(handle(req, kind, function (p) { e.waitUntil(p); }));
+    if (!mine(e.request)) return;
+    e.respondWith(handle(e.request));
   });
 }
-if (typeof module !== 'undefined') module.exports = { handle: handle, kindOf: kindOf, trim: trim, fresh: fresh };
+if (typeof module !== 'undefined') module.exports = { mine: mine, handle: handle, CORE: CORE, LAZY: LAZY };

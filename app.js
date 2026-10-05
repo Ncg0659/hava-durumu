@@ -7,6 +7,9 @@
   var DEFAULT_CITY = { name: 'İstanbul', admin: 'İstanbul', country: 'Türkiye', lat: 41.0138, lon: 28.9497 };
   var FAV_KEY = 'hd2:favs';
   var LAST_KEY = 'hd2:last';
+  var WX_KEY = 'hd2:wx';          // çevrimdışı için son başarılı hava verisi (en fazla WX_MAX şehir)
+  var WX_MAX = 6;
+  var WX_MAX_AGE = 24 * 3600 * 1000; // bundan eski veri hiç gösterilmez
   var MAX_FAVS = 12;
   var reduceMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   function reduceMotion() { return !!(reduceMQ && reduceMQ.matches); }
@@ -143,6 +146,7 @@
     currentTheme = theme;
     Array.prototype.forEach.call(el.sky.children, function (n) { n.classList.toggle('on', n.dataset.theme === theme); });
     if (el.theme) el.theme.setAttribute('content', THEME_COLOR[theme] || '#1668c9');
+    try { localStorage.setItem('hd2:themeName', theme); localStorage.setItem('hd2:themeColor', THEME_COLOR[theme] || '#1668c9'); } catch (e) { /* açılış rengi hatırlanamaz, sorun değil */ }
     buildFx(theme);
   }
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -598,6 +602,30 @@
     }
   }
 
+  // ---------- Çevrimdışı: son başarılı veri ----------
+  function saveWx(city, data) {
+    var all = store(WX_KEY) || {}, id = cityId(city), ids;
+    all[id] = { city: city, data: data, t: Date.now() };
+    ids = Object.keys(all).sort(function (a, b) { return all[b].t - all[a].t; });
+    ids.slice(WX_MAX).forEach(function (k) { delete all[k]; });
+    store(WX_KEY, all);
+  }
+  function loadWx(city) {
+    var all = store(WX_KEY), h = all && all[cityId(city)];
+    if (!h || !h.data || !h.data.current || Date.now() - h.t > WX_MAX_AGE || h.t > Date.now() + 60000) return null;
+    return h;
+  }
+  function stamp(t) {
+    var d = new Date(t), now = new Date(), hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    return d.toDateString() === now.toDateString() ? 'bugün ' + hm : d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' ' + hm;
+  }
+  function hideSplash() {
+    var s = $('splash'); if (!s || s.dataset.done) return;
+    s.dataset.done = '1'; s.classList.add('out');
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 600);
+  }
+  window.addEventListener('online', function () { if (state.stale && state.city) loadCity(state.city); });
+
   // ---------- Veri ----------
   function loadCity(city) {
     if (state.loadCtl) state.loadCtl.abort();
@@ -613,10 +641,12 @@
     return fetch(url, { signal: ctl.signal })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (data) {
-        state.city = city; state.data = data;
+        state.city = city; state.data = data; state.stale = false;
+        el.content.classList.remove('is-stale');
         if (state.aqCtl) state.aqCtl.abort();
         state.aq = null; state.aqState = 'loading';
         store(LAST_KEY, city);
+        saveWx(city, data);
         render(city, data);
         renderFavs();
         loadAQ(city);
@@ -624,9 +654,25 @@
       })
       .catch(function (err) {
         if (err.name === 'AbortError') return;
-        say('Hava durumu alınamadı. İnternet bağlantını kontrol edip tekrar dene.', function () { loadCity(city); });
+        var offline = navigator.onLine === false || err instanceof TypeError, hit = loadWx(city);
+        if (hit) {
+          // Eski veri güncelmiş gibi gösterilmez: uyarı çubuğu + soluk ana kart
+          state.city = city; state.data = hit.data; state.stale = true;
+          if (state.aqCtl) state.aqCtl.abort();
+          state.aq = null; state.aqState = 'error';
+          store(LAST_KEY, city);
+          render(city, hit.data);
+          renderFavs();
+          el.content.classList.add('is-stale');
+          document.title = city.name + ' · Hava Durumum';
+          say((offline ? 'İnternet bağlantısı yok. ' : 'Güncel veri alınamadı. ') + 'Gösterilen veri eski. Son güncelleme: ' + stamp(hit.t) + '.', function () { loadCity(city); });
+        } else if (offline) {
+          say('İnternet bağlantısı yok. Güncel hava verisi alınamıyor.', function () { loadCity(city); });
+        } else {
+          say('Hava durumu alınamadı. İnternet bağlantını kontrol edip tekrar dene.', function () { loadCity(city); });
+        }
       })
-      .then(function () { if (state.loadCtl === ctl) el.app.classList.remove('loading'); });
+      .then(function () { if (state.loadCtl === ctl) { el.app.classList.remove('loading'); hideSplash(); } });
   }
 
   // ---------- Şehir arama ----------
@@ -688,5 +734,6 @@
   // ---------- Başlangıç ----------
   $('searchIcon').innerHTML = uiIcon('search', 18);
   renderFavs();
+  setTimeout(hideSplash, 4000);   // yavaş ağda açılış ekranı sonsuza kadar kalmasın
   loadCity(store(LAST_KEY) || DEFAULT_CITY);
 })();

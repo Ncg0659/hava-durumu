@@ -116,7 +116,10 @@
     chevron: '<path d="M6 9l6 6 6-6"/>',
     left: '<path d="M15 5l-7 7 7 7"/>',
     right: '<path d="M9 5l7 7-7 7"/>',
-    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.500M12 7.800h.01"/>'
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.500M12 7.800h.01"/>',
+    share: '<path d="M12 15V3.500M8 7l4-4 4 4"/><path d="M6 11H5a1.500 1.500 0 0 0-1.500 1.500v7A1.500 1.500 0 0 0 5 21h14a1.500 1.500 0 0 0 1.500-1.500v-7A1.500 1.500 0 0 0 19 11h-1"/>',
+    download: '<path d="M12 3.500V15M8 11l4 4 4-4"/><path d="M4.500 19.500h15"/>',
+    refresh: '<path d="M20 11a8 8 0 1 0-2.300 5.700"/><path d="M20 4.500V11h-6.500"/>'
   };
   function uiIcon(name, size, extraClass) {
     return '<svg class="ui' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 24 24" width="' + size + '" height="' + size +
