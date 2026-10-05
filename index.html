@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1668c9">
+<link rel="icon" href="data:,">
+<title>Hava Durumum</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="sky" aria-hidden="true">
+  <div class="sky-layer" data-theme="clear-day"></div>
+  <div class="sky-layer" data-theme="clear-night"></div>
+  <div class="sky-layer" data-theme="cloud-day"></div>
+  <div class="sky-layer" data-theme="cloud-night"></div>
+  <div class="sky-layer" data-theme="fog"></div>
+  <div class="sky-layer" data-theme="rain-day"></div>
+  <div class="sky-layer" data-theme="rain-night"></div>
+  <div class="sky-layer" data-theme="snow-day"></div>
+  <div class="sky-layer" data-theme="snow-night"></div>
+  <div class="sky-layer" data-theme="storm"></div>
+</div>
+<div id="fx" aria-hidden="true"></div>
+
+<main class="app" id="app">
+  <header class="top">
+    <form class="search" id="search" role="search" autocomplete="off">
+      <span id="searchIcon" aria-hidden="true"></span>
+      <input id="q" type="search" placeholder="Şehir ara" aria-label="Şehir ara" enterkeyhint="search"
+             role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list" autocapitalize="words" spellcheck="false">
+    </form>
+    <ul class="suggest" id="suggest" role="listbox" aria-label="Şehir önerileri" hidden></ul>
+  </header>
+  <nav class="favs" id="favs" aria-label="Favori şehirler" hidden></nav>
+  <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+  <div id="content" aria-live="off"></div>
+  <footer class="foot">
+    <p>Hava verisi: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>
+    (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)</p>
+    <p>Hava kalitesi: Open-Meteo, <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noopener">CAMS ENSEMBLE</a> verisi. Copernicus Atmosphere Monitoring Service bilgilerinden türetilmiştir.</p>
+    <p>Harita: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a>, veri <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap katkıcıları</a> · Radar: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a></p>
+  </footer>
+</main>
+
+<div class="sheet-wrap" id="sheet" hidden>
+  <div class="sheet-bg"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><i></i></div>
+    <div id="sheetBody"></div>
+  </section>
+</div>
+
+<script src="icons.js"></script>
+<script src="insights.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
