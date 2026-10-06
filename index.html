@@ -33,7 +33,7 @@
 <div id="splash" data-theme="clear-day" aria-hidden="true"><svg viewBox="70 60 360 340" width="108" height="102" focusable="false"><g stroke="#FFC93C" stroke-width="20" stroke-linecap="round"><line x1="284" y1="188" x2="312" y2="188"/><line x1="258" y1="250" x2="278" y2="270"/><line x1="196" y1="276" x2="196" y2="304"/><line x1="134" y1="250" x2="114" y2="270"/><line x1="108" y1="188" x2="80" y2="188"/><line x1="134" y1="126" x2="114" y2="106"/><line x1="196" y1="100" x2="196" y2="72"/><line x1="258" y1="126" x2="278" y2="106"/></g><circle cx="196" cy="188" r="64" fill="#FFC93C"/><g fill="#EDF3F9"><circle cx="196" cy="332" r="58"/><circle cx="276" cy="298" r="82"/><circle cx="358" cy="332" r="58"/><rect x="196" y="332" width="162" height="58" rx="29"/></g></svg><p>Hava Durumum</p></div>
 <script>
 /* Açılışta beyaz/boş ekran olmasın: son temanın rengi ilk boyamadan önce uygulanır */
-(function () { try { var n = localStorage.getItem('hd2:themeName'), c = localStorage.getItem('hd2:themeColor');
+(function () { document.documentElement.className = 'boot'; try { var n = localStorage.getItem('hd2:themeName'), c = localStorage.getItem('hd2:themeColor');
   if (n) document.getElementById('splash').setAttribute('data-theme', n);
   if (c) document.querySelector('meta[name="theme-color"]').setAttribute('content', c); } catch (e) {} })();
 </script>

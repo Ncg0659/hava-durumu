@@ -2,7 +2,7 @@
    "Paylaş > Ana Ekrana Ekle" yardımı (iPhone). Hava durumu mantığına dokunmaz. */
 'use strict';
 (function () {
-  var BUILD = '474c7429';
+  var BUILD = 'ad25ee8a';
   var INSTALL_KEY = 'hd2:pwa-install-no';   // kapatılırsa bir daha sorulmaz
   var IOS_KEY = 'hd2:pwa-ios-no';
   var SHOW_DELAY = 6000;                    // uygulama açıldıktan sonra rahatsız etmemek için bekle
@@ -53,7 +53,8 @@
       if (!wantReload || reloading) return;      // kullanıcı onaylamadan sayfa yenilenmez
       reloading = true; location.reload();
     });
-    navigator.serviceWorker.register('sw.js').then(function (reg) {
+    // Kayıt, açılış (splash → ana ekran) bittikten sonra yapılır: ilk açılışta ön-önbellek indirmesi veri/çizimle yarışmasın
+    var startSw = function () { navigator.serviceWorker.register('sw.js').then(function (reg) {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
       reg.addEventListener('updatefound', function () {
         var nw = reg.installing; if (!nw) return;
@@ -66,7 +67,9 @@
       document.addEventListener('visibilitychange', function () {
         if (!document.hidden && Date.now() - last > 30 * 60 * 1000) { last = Date.now(); reg.update().catch(function () {}); }
       });
-    }).catch(function () { /* çevrimdışı önbellek olmadan da çalışır */ });
+    }).catch(function () { /* çevrimdışı önbellek olmadan da çalışır */ }); };
+    var later = function () { setTimeout(startSw, 1200); };
+    if (document.readyState === 'complete') later(); else window.addEventListener('load', later, { once: true });
   }
 
   // ---------- Android / Chrome kurulum önerisi ----------

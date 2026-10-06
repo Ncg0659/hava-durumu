@@ -11,7 +11,7 @@
    değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
    Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
 'use strict';
-var BUILD = '474c7429';
+var BUILD = 'ad25ee8a';
 var PREFIX = 'hd2-shell-';
 var CACHE = PREFIX + BUILD;
 var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'insights.js', 'pwa.js', 'notify.js', 'manifest.webmanifest',

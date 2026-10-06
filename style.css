@@ -27,6 +27,7 @@ ul { list-style: none; }
 #sky { position: fixed; inset: 0; z-index: -3; }
 .sky-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
 .sky-layer.on { opacity: 1; }
+#sky.nt .sky-layer { transition: none; }   /* ilk tema, splash'ın altında anında oturur */
 [data-theme="clear-day"]   { background: linear-gradient(180deg, #1668c9 0%, #2f8fe0 45%, #6bb8ee 100%); }
 [data-theme="clear-night"] { background: linear-gradient(180deg, #070f26 0%, #12214f 55%, #2a2f73 100%); }
 [data-theme="cloud-day"]   { background: linear-gradient(180deg, #3f5f80 0%, #6f8ca6 60%, #93abbf 100%); }
@@ -39,9 +40,10 @@ ul { list-style: none; }
 [data-theme="storm"]       { background: linear-gradient(180deg, #15132c 0%, #2c2650 55%, #473b6b 100%); }
 
 /* ---------- Efektler: yalnızca transform/opacity, düşük yoğunluk ---------- */
-#fx { position: fixed; inset: 0; z-index: -2; pointer-events: none; overflow: hidden; contain: strict; }
+#fx { position: fixed; inset: 0; z-index: -2; pointer-events: none; overflow: hidden; contain: strict; opacity: 0; transition: opacity .9s ease; }
+#fx.in { opacity: 1; }
 #fx.paused i { animation-play-state: paused; }
-#fx i { position: absolute; display: block; will-change: transform; }
+#fx i { position: absolute; display: block; }
 .rain { top: -30px; width: 1.5px; border-radius: 2px; opacity: .55; background: linear-gradient(rgba(190, 225, 255, 0), rgba(190, 225, 255, .8)); animation: fall linear infinite; }
 @keyframes fall { to { transform: translate3d(-22px, 112vh, 0); } }
 .snow { top: -10px; border-radius: 50%; background: #fff; opacity: .7; animation: snowfall linear infinite; }
@@ -92,7 +94,8 @@ h2 { font-size: 15px; font-weight: 600; color: var(--ink-2); white-space: nowrap
 /* ---------- Ana alan (gökyüzünün üstünde, kutusuz) ---------- */
 #content { transition: opacity .3s ease; }
 .loading #content { opacity: .55; }
-.reveal { animation: rise .5s cubic-bezier(.2, .7, .2, 1); }
+.reveal { animation: rise .5s cubic-bezier(.2, .7, .2, 1); }   /* yalnızca Web Animations API olmayan tarayıcılar için yedek */
+html.boot #content { opacity: 0; }   /* ana içerik hazır olup splash kalkarken birlikte belirir */
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .hero { position: relative; text-align: center; padding: 14px 0 2px; }
 .hero h1 { font-size: 24px; font-weight: 650; letter-spacing: -.01em; line-height: 1.2; padding: 0 46px; }
@@ -184,13 +187,13 @@ button.dy:active { background: rgba(255, 255, 255, .08); }
 
 /* ---------- Hareketli ikonlar (sadece .anim, yavaş) ---------- */
 .ic { display: block; flex: none; overflow: visible; }
-.ic.anim .spin { animation: spin 50s linear infinite; }
-.ic.anim .cf { animation: float 8s ease-in-out infinite alternate; }
-.ic.anim .drop { animation: drop 1.6s linear infinite; }
-.ic.anim .flake { animation: flake 4.5s ease-in-out infinite; }
-.ic.anim .flash { animation: bolt 4s infinite; }
-.ic.anim .tw { animation: twinkle 4s ease-in-out infinite; }
-.ic.anim .mist { animation: float 7s ease-in-out infinite alternate; }
+.motion .ic.anim .spin { animation: spin 50s linear infinite; }
+.motion .ic.anim .cf { animation: float 8s ease-in-out infinite alternate; }
+.motion .ic.anim .drop { animation: drop 1.6s linear infinite; }
+.motion .ic.anim .flake { animation: flake 4.5s ease-in-out infinite; }
+.motion .ic.anim .flash { animation: bolt 4s infinite; }
+.motion .ic.anim .tw { animation: twinkle 4s ease-in-out infinite; }
+.motion .ic.anim .mist { animation: float 7s ease-in-out infinite alternate; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes float { to { transform: translateX(3px); } }
 @keyframes drop { 0% { transform: translateY(-4px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(9px); opacity: 0; } }
@@ -367,11 +370,13 @@ html.lock, html.lock body { overflow: hidden; }
 
 /* ================= Aşama 3: PWA ================= */
 /* Açılış ekranı: son temanın renginde; veri gelince solarak kalkar */
-#splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none; transition: opacity .45s ease; }
+#splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none; transition: opacity .38s ease; will-change: opacity; }
+#splash > * { transition: transform .38s cubic-bezier(.2, .7, .2, 1); }
 #splash p { font-size: 20px; font-weight: 650; letter-spacing: .2px; }
 #splash svg { filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .25)); }
 #splash.out { opacity: 0; }
-@media (prefers-reduced-motion: reduce) { #splash { transition: none; } }
+#splash.out > * { transform: translate3d(0, -6px, 0) scale(1.03); }   /* çok hafif; yalnızca transform + opacity */
+@media (prefers-reduced-motion: reduce) { #splash { transition: opacity .12s linear !important; } #splash > * { transition: none !important; transform: none !important; } }
 /* Eski (çevrimdışı) veri gösterilirken ana kart soluk durur */
 #content.is-stale .hero .nowrow { opacity: .7; }
 .foot .ver { font-size: 11.5px; opacity: .8; }

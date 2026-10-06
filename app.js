@@ -14,6 +14,13 @@
   var reduceMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   function reduceMotion() { return !!(reduceMQ && reduceMQ.matches); }
   var LOW_POWER = (navigator.hardwareConcurrency || 8) <= 4; // zayıf cihazlarda daha az parçacık
+  // Açılış ölçümü: performance.mark ile (adres sonuna ?perf eklenirse konsola tablo basılır)
+  function mark(n) { try { performance.mark('hd:' + n); } catch (e) { /* önemli değil */ } }
+  mark('boot');
+  var MIN_SPLASH = 300;        // açılış ekranı en az bu kadar (ms) görünür; hazırsa fazla beklenmez
+  var FRESH_MS = 10 * 60000;   // bu kadar yeni önbellek varsa ağ beklenmeden hemen gösterilir
+  var COLD_TIMEOUT = 8000;     // soğuk açılışta ağ bu kadar yanıt vermezse önbelleğe/hata mesajına geçilir
+  var boot = { motion: false, needle: false, firstTheme: true };
 
   // ---------- Kısa yardımcılar ----------
   function $(id) { return document.getElementById(id); }
@@ -141,13 +148,24 @@
 
   // ---------- Gökyüzü + efektler (sadece transform/opacity animasyonu) ----------
   var currentTheme = '';
+  boot.booting = true;
   function setTheme(theme) {
     if (theme === currentTheme) return;
     currentTheme = theme;
+    // İlk uygulamada gökyüzü geçişsiz oturur: splash kalktığında altındaki renk zaten hazır (sert renk sıçraması olmaz)
+    if (boot.firstTheme) { boot.firstTheme = false; el.sky.classList.add('nt'); }
     Array.prototype.forEach.call(el.sky.children, function (n) { n.classList.toggle('on', n.dataset.theme === theme); });
+    if (el.sky.classList.contains('nt')) requestAnimationFrame(function () { requestAnimationFrame(function () { el.sky.classList.remove('nt'); }); });
     if (el.theme) el.theme.setAttribute('content', THEME_COLOR[theme] || '#1668c9');
     try { localStorage.setItem('hd2:themeName', theme); localStorage.setItem('hd2:themeColor', THEME_COLOR[theme] || '#1668c9'); } catch (e) { /* açılış rengi hatırlanamaz, sorun değil */ }
-    buildFx(theme);
+    if (boot.motion) buildFx(theme);   // açılışta dekoratif efektler splash kalktıktan sonra başlar
+  }
+  // Giriş animasyonu: yalnızca opacity + transform; Web Animations API (zorunlu reflow yok)
+  function revealContent(ms) {
+    if (reduceMotion()) return;
+    var n = el.content;
+    if (n.animate) n.animate([{ opacity: 0, transform: 'translate3d(0,10px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: ms || 450, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    else { n.classList.remove('reveal'); void n.offsetWidth; n.classList.add('reveal'); }
   }
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function buildFx(theme) {
@@ -168,6 +186,7 @@
       for (i = 0; i < 2; i++) add('softcloud', 'top:' + (10 + i * 30) + '%;animation-duration:' + (110 + i * 40) + 's;animation-delay:-' + (i * 55) + 's');
     }
     el.fx.appendChild(f);
+    requestAnimationFrame(function () { el.fx.classList.add('in'); });
   }
   document.addEventListener('visibilitychange', function () { el.fx.classList.toggle('paused', document.hidden); });
   if (reduceMQ && reduceMQ.addEventListener) reduceMQ.addEventListener('change', function () { buildFx(currentTheme); });
@@ -266,7 +285,7 @@
     return '<section class="card" id="dailyCard" aria-labelledby="h-dy"><div class="card-h"><h2 id="h-dy">' + dl.time.length + ' günlük tahmin</h2><span class="sm">Ortak ölçek: ' + deg(lo) + ' – ' + deg(hiT) + '</span></div><ul class="days">' + out + '</ul><p class="hint">Ayrıntı için bir güne dokun.</p></section>';
   }
 
-  function render(city, data) {
+  function render(city, data, opts) {
     if (window.WeatherMap) window.WeatherMap.destroy(); // eski kart DOM'dan kalkıyor; harita yeniden kurulur
     var c = data.current, h = data.hourly, dl = data.daily;
     var isDay = c.is_day === 1, info = describe(c.weather_code, isDay);
@@ -295,18 +314,19 @@
       '<section class="card aq" id="aqCard" aria-labelledby="h-aq"></section>' +
       mapShell() +
       sunCard({ sunrise: dl.sunrise[0], sunset: dl.sunset[0], time: c.time }) + dailyCard(dl, c.temperature_2m);
+    mark('render-html');
     fillInsights();
+    mark('render-insights');
 
     $('favBtn').addEventListener('click', toggleFav);
-    el.content.classList.remove('reveal');
-    void el.content.offsetWidth; // giriş animasyonunu yeniden başlat
-    el.content.classList.add('reveal');
+    if (!boot.booting && !(opts && opts.noReveal)) revealContent(500);   // açılışta giriş animasyonunu hideSplash başlatır
 
     // Rüzgâr oku: 0°'den gerçek yöne doğru döner
     var needle = el.content.querySelector('.needle');
     if (needle) {
       var to = needle.getAttribute('data-to');
       if (reduceMotion()) needle.style.transform = 'rotate(' + to + 'deg)';
+      else if (!boot.motion) boot.needle = true;   // açılışta ok, hareket aşaması başlayınca döner
       else requestAnimationFrame(function () { requestAnimationFrame(function () { needle.style.transform = 'rotate(' + to + 'deg)'; }); });
     }
     if (state.mapOpen) openMap(true);
@@ -620,20 +640,62 @@
     var d = new Date(t), now = new Date(), hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     return d.toDateString() === now.toDateString() ? 'bugün ' + hm : d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' ' + hm;
   }
+  function startMotion() {
+    boot.motion = true;
+    document.documentElement.classList.add('motion');   // simge animasyonları (.ic.anim) şimdi başlar
+    if (boot.needle) { boot.needle = false; var nd = el.content.querySelector('.needle'); if (nd) nd.style.transform = 'rotate(' + nd.getAttribute('data-to') + 'deg)'; }
+    var go = function () { buildFx(currentTheme); mark('motion'); if (location.search.indexOf('perf') >= 0) logPerf(); };
+    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 400 }); else setTimeout(go, 0);
+  }
+  function logPerf() {
+    try { var t0 = performance.getEntriesByName('hd:boot')[0].startTime, rows = {};
+      performance.getEntriesByType('mark').filter(function (m) { return m.name.indexOf('hd:') === 0; }).forEach(function (m) { rows[m.name] = Math.round(m.startTime - t0); });
+      console.table(rows); } catch (e) { /* önemli değil */ }
+  }
   function hideSplash() {
-    var s = $('splash'); if (!s || s.dataset.done) return;
-    s.dataset.done = '1'; s.classList.add('out');
-    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 600);
+    var s = $('splash');
+    if (!s) { boot.booting = false; document.documentElement.classList.remove('boot'); if (boot.q) { var q0 = boot.q; boot.q = null; q0(); } return; }
+    if (s.dataset.done) return;
+    s.dataset.done = '1';
+    var wait = Math.max(0, MIN_SPLASH - performance.now());   // ağır iş bitti; en az 300 ms'ye tamamlanana kadar bekle
+    var run = function () {
+      requestAnimationFrame(function () {
+        // Tek karede: içerik görünür olur + animasyonu başlar + splash solmaya başlar (hepsi opacity/transform)
+        document.documentElement.classList.remove('boot'); boot.booting = false;
+        revealContent(380);
+        s.classList.add('out'); mark('splash-out');
+        var gone = function () { if (s.parentNode) s.parentNode.removeChild(s); mark('splash-gone'); };
+        setTimeout(gone, reduceMotion() ? 160 : 460);
+        // Dekoratif efektler (parçacıklar, simge animasyonları) geçiş bittikten sonra, 2 kare + kısa gecikmeyle
+        setTimeout(function () { requestAnimationFrame(startMotion); }, reduceMotion() ? 0 : 520);
+        if (boot.q) { var q = boot.q; boot.q = null; setTimeout(q, 0); }   // ertelenen ikincil iş (hava kalitesi) geçiş başladıktan sonra
+      });
+    };
+    if (wait > 0) setTimeout(run, wait); else run();
   }
   window.addEventListener('online', function () { if (state.stale && state.city) loadCity(state.city); });
 
   // ---------- Veri ----------
-  function loadCity(city) {
+  function afterBoot(fn) { if (boot.booting) boot.q = fn; else fn(); }   // açılışta yalnızca sonuncusu çalışır
+  function applyFresh(city, data, opts) {
+    state.city = city; state.data = data; state.stale = false;
+    el.content.classList.remove('is-stale');
+    if (state.aqCtl) state.aqCtl.abort();
+    state.aq = null; state.aqState = 'loading';
+    store(LAST_KEY, city);
+    if (!(opts && opts.fromCache)) saveWx(city, data);   // önbellekten gelen veri "şimdi alındı" diye yeniden damgalanmaz
+    render(city, data, opts);
+    renderFavs();
+    afterBoot(function () { if (state.city === city) loadAQ(city); });   // hava kalitesi isteği/çizimi açılış geçişini geciktirmesin
+    document.title = Math.round(data.current.temperature_2m) + '° ' + city.name + ' · Hava Durumum';
+  }
+  function loadCity(city, o) {
+    o = o || {};
     if (state.loadCtl) state.loadCtl.abort();
-    var ctl = state.loadCtl = new AbortController();
+    var ctl = state.loadCtl = new AbortController(), timer = 0;
+    if (o.cold) timer = setTimeout(function () { ctl.timedOut = true; ctl.abort(); }, COLD_TIMEOUT);   // yavaş ağda boş ekran yerine önbellek/hata
     hideSuggest();
-    say('');
-    el.app.classList.add('loading');
+    if (!o.silent) { say(''); el.app.classList.add('loading'); }
     var url = API_FORECAST + '?latitude=' + city.lat + '&longitude=' + city.lon +
       '&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,wind_speed_10m,wind_direction_10m' +
       '&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,is_day,wind_speed_10m,uv_index' +
@@ -642,38 +704,36 @@
     return fetch(url, { signal: ctl.signal })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (data) {
-        state.city = city; state.data = data; state.stale = false;
-        el.content.classList.remove('is-stale');
-        if (state.aqCtl) state.aqCtl.abort();
-        state.aq = null; state.aqState = 'loading';
-        store(LAST_KEY, city);
-        saveWx(city, data);
-        render(city, data);
-        renderFavs();
-        loadAQ(city);
-        document.title = Math.round(data.current.temperature_2m) + '° ' + city.name + ' · Hava Durumum';
+        mark('data');
+        if (o.silent && state.data && state.data.current && data.current && state.data.current.time === data.current.time) { saveWx(city, data); return; }   // aynı ölçüm: ekrana dokunma
+        applyFresh(city, data, o.silent ? { noReveal: true } : null);
       })
       .catch(function (err) {
-        if (err.name === 'AbortError') return;
-        var offline = navigator.onLine === false || err instanceof TypeError, hit = loadWx(city);
+        if (err.name === 'AbortError' && !ctl.timedOut) return;
+        var offline = (navigator.onLine === false || err instanceof TypeError) && !ctl.timedOut, hit = loadWx(city);
         if (hit) {
           // Eski veri güncelmiş gibi gösterilmez: uyarı çubuğu + soluk ana kart
-          state.city = city; state.data = hit.data; state.stale = true;
-          if (state.aqCtl) state.aqCtl.abort();
-          state.aq = null; state.aqState = 'error';
-          store(LAST_KEY, city);
-          render(city, hit.data);
-          renderFavs();
+          state.stale = true;
+          if (!o.silent) {   // sessiz yenileme: ekrandaki önbellek verisi zaten çizili, yeniden çizilmez (yalnızca uyarı eklenir)
+            state.city = city; state.data = hit.data;
+            if (state.aqCtl) state.aqCtl.abort();
+            state.aq = null; state.aqState = 'error';
+            store(LAST_KEY, city);
+            render(city, hit.data);
+            renderFavs();
+          }
           el.content.classList.add('is-stale');
           document.title = city.name + ' · Hava Durumum';
           say((offline ? 'İnternet bağlantısı yok. ' : 'Güncel veri alınamadı. ') + 'Gösterilen veri eski. Son güncelleme: ' + stamp(hit.t) + '.', function () { loadCity(city); });
+        } else if (o.silent) {
+          return;
         } else if (offline) {
           say('İnternet bağlantısı yok. Güncel hava verisi alınamıyor.', function () { loadCity(city); });
         } else {
           say('Hava durumu alınamadı. İnternet bağlantını kontrol edip tekrar dene.', function () { loadCity(city); });
         }
       })
-      .then(function () { if (state.loadCtl === ctl) { el.app.classList.remove('loading'); hideSplash(); } });
+      .then(function () { clearTimeout(timer); if (state.loadCtl === ctl) { el.app.classList.remove('loading'); hideSplash(); } });
   }
 
   // ---------- Şehir arama ----------
@@ -735,6 +795,12 @@
   // ---------- Başlangıç ----------
   $('searchIcon').innerHTML = uiIcon('search', 18);
   renderFavs();
-  setTimeout(hideSplash, 4000);   // yavaş ağda açılış ekranı sonsuza kadar kalmasın
-  loadCity(store(LAST_KEY) || DEFAULT_CITY);
+  setTimeout(hideSplash, 12000);  // son çare: ağ zaman aşımı (8 sn) zaten hata/önbellek gösterir
+  var startCity = store(LAST_KEY) || DEFAULT_CITY, warm = loadWx(startCity);
+  if (warm && Date.now() - warm.t <= FRESH_MS && navigator.onLine !== false) {
+    // Taze önbellek: ağ beklenmeden hemen çiz, arka planda sessizce yenile
+    applyFresh(startCity, warm.data, { noReveal: true, fromCache: true });
+    hideSplash();
+    loadCity(startCity, { silent: true });
+  } else loadCity(startCity, { cold: true });
 })();
