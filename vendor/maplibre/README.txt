@@ -1,0 +1,1 @@
+MapLibre GL JS v5.24.0 (BSD-3-Clause). Resmî sürüm paketinden (https://github.com/maplibre/maplibre-gl-js/releases/tag/v5.24.0, dist.zip) değiştirilmeden alındı. v6 yalnızca ES modülü olduğu için file:// ve tek dosya kullanımına uygun olan v5 UMD sürümü seçildi.
