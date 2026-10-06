@@ -18,6 +18,7 @@
   function mark(n) { try { performance.mark('hd:' + n); } catch (e) { /* önemli değil */ } }
   mark('boot');
   var MIN_SPLASH = 300;        // açılış ekranı en az bu kadar (ms) görünür; hazırsa fazla beklenmez
+  var SWITCH_CACHE_MAX = 3 * 3600 * 1000;   // şehir değişiminde bu kadar yeni önbellek anında gösterilir (arkada yenilenir)
   var FRESH_MS = 10 * 60000;   // bu kadar yeni önbellek varsa ağ beklenmeden hemen gösterilir
   var COLD_TIMEOUT = 8000;     // soğuk açılışta ağ bu kadar yanıt vermezse önbelleğe/hata mesajına geçilir
   var boot = { motion: false, needle: false, firstTheme: true };
@@ -33,13 +34,17 @@
   function num(n) { var r = round(n); return r < 0 ? '−' + (-r) : String(r); } // gerçek eksi işareti
   function deg(n) { return num(n) + '°'; }
   function r1(n) { return Math.round(n * 10) / 10; }
+  var lastRaw = {};   // son okunan/yazılan metin: aynı değer tekrar yazılmaz
   function store(key, value) {
     try {
-      if (value === undefined) { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
-      localStorage.setItem(key, JSON.stringify(value));
+      if (value === undefined) { var raw = localStorage.getItem(key); lastRaw[key] = raw; return raw ? JSON.parse(raw) : null; }
+      var txt = JSON.stringify(value);
+      if (lastRaw[key] === txt) return null;
+      localStorage.setItem(key, txt); lastRaw[key] = txt;
     } catch (e) { /* özel pencere vb. durumlarda sessizce devam et */ }
     return null;
   }
+  function idle(fn, ms) { if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: ms || 300 }); else setTimeout(fn, 0); }
 
   // ---------- Hava durumu kodları (WMO) ----------
   var WMO = {
@@ -160,13 +165,14 @@
     if (el.sky.classList.contains('nt')) requestAnimationFrame(function () { requestAnimationFrame(function () { el.sky.classList.remove('nt'); }); });
     if (el.theme) el.theme.setAttribute('content', THEME_COLOR[theme] || '#1668c9');
     try { localStorage.setItem('hd2:themeName', theme); localStorage.setItem('hd2:themeColor', THEME_COLOR[theme] || '#1668c9'); } catch (e) { /* açılış rengi hatırlanamaz, sorun değil */ }
-    if (boot.motion) buildFx(theme);   // açılışta dekoratif efektler splash kalktıktan sonra başlar
+    if (boot.motion) idle(function () { if (currentTheme === theme) buildFx(theme); }, 300);   // açılışta dekoratif efektler splash kalktıktan sonra; geçişte kare süresini bölmesin
   }
   // Giriş animasyonu: yalnızca opacity + transform; Web Animations API (zorunlu reflow yok)
-  function revealContent(ms) {
+  function revealContent(ms, soft) {
     if (reduceMotion()) return;
     var n = el.content;
-    if (n.animate) n.animate([{ opacity: 0, transform: 'translate3d(0,10px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: ms || 450, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    if (soft && n.animate) n.animate([{ opacity: 0.55 }, { opacity: 1 }], { duration: ms || 220, easing: 'ease-out' });   // şehir geçişi: boşalmadan yumuşak çapraz geçiş
+    else if (n.animate) n.animate([{ opacity: 0, transform: 'translate3d(0,10px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: ms || 450, easing: 'cubic-bezier(.2,.7,.2,1)' });
     else { n.classList.remove('reveal'); void n.offsetWidth; n.classList.add('reveal'); }
   }
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -288,7 +294,10 @@
   }
 
   function render(city, data, opts) {
-    if (window.WeatherMap) window.WeatherMap.destroy(); // eski kart DOM'dan kalkıyor; harita yeniden kurulur
+    // Harita açıksa kart DOM'dan söküp yeni içeriğe geri takılır; harita yeniden kurulmaz (yalnızca merkez + işaret güncellenir)
+    var keepMap = null, mb = state.mapOpen && window.WeatherMap && $('mapBox');
+    if (mb && !mb.hidden && $('mapCard') && window.WeatherMap._state()) { keepMap = $('mapCard'); keepMap.parentNode.removeChild(keepMap); }
+    else if (window.WeatherMap) window.WeatherMap.destroy();
     var c = data.current, h = data.hourly, dl = data.daily;
     var isDay = c.is_day === 1, info = describe(c.weather_code, isDay);
     var uvToday = dl.uv_index_max[0] || 0, rainToday = dl.precipitation_probability_max[0] || 0;
@@ -316,12 +325,13 @@
       '<section class="card aq" id="aqCard" aria-labelledby="h-aq"></section>' +
       mapShell() +
       sunCard({ sunrise: dl.sunrise[0], sunset: dl.sunset[0], time: c.time }) + dailyCard(dl, c.temperature_2m);
+    if (keepMap) { var ph = $('mapCard'); if (ph) ph.parentNode.replaceChild(keepMap, ph); }
     mark('render-html');
     fillInsights();
     mark('render-insights');
 
     $('favBtn').addEventListener('click', toggleFav);
-    if (!boot.booting && !(opts && opts.noReveal)) revealContent(500);   // açılışta giriş animasyonunu hideSplash başlatır
+    if (!boot.booting && !(opts && opts.noReveal)) revealContent(opts && opts.soft ? 220 : 500, opts && opts.soft);   // açılışta giriş animasyonunu hideSplash başlatır
 
     // Rüzgâr oku: 0°'den gerçek yöne doğru döner
     var needle = el.content.querySelector('.needle');
@@ -331,7 +341,8 @@
       else if (!boot.motion) boot.needle = true;   // açılışta ok, hareket aşaması başlayınca döner
       else requestAnimationFrame(function () { requestAnimationFrame(function () { needle.style.transform = 'rotate(' + to + 'deg)'; }); });
     }
-    if (state.mapOpen) openMap(true);
+    if (keepMap) window.WeatherMap.update(mapCtx());
+    else if (state.mapOpen) openMap(true);
   }
 
   // ---------- Aşama 2: bugünün özeti, aktiviteler, hava kalitesi ----------
@@ -407,24 +418,33 @@
     if (tp) tp.outerHTML = tipsHtml(tipsFor(tipsInput()));
     fillInsights();
   }
-  function loadAQ(city) {
-    if (state.aqCtl) state.aqCtl.abort();
-    var ctl = state.aqCtl = new AbortController();
+  // Hava kalitesi isteği (tahminle paralel başlayabilir): {ctl, p} döner; ekrana yazmak applyAQ'nun işi
+  function fetchAQ(city) {
+    var ctl = new AbortController();
     var url = API_AQ + '?latitude=' + city.lat + '&longitude=' + city.lon +
       '&current=european_aqi,us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&timezone=auto';
-    state.aq = null; state.aqState = 'loading';
-    fetch(url, { signal: ctl.signal })
+    var p = fetch(url, { signal: ctl.signal })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-      .then(function (j) {
-        if (ctl !== state.aqCtl) return;
-        var a = Insights.airQuality(j.current);
-        if (!a) throw new Error('veri yok');
-        state.aq = a; state.aqState = 'ok'; refreshInsights();
-      })
-      .catch(function (e) {
-        if (e.name === 'AbortError' || ctl !== state.aqCtl) return;
-        state.aqState = 'error'; refreshInsights();
-      });
+      .then(function (j) { var a = Insights.airQuality(j.current); if (!a) throw new Error('veri yok'); return a; });
+    p.catch(function () { /* applyAQ ilgilenir */ });
+    return { ctl: ctl, p: p, city: city };
+  }
+  function applyAQ(job, city) {
+    state.aqCtl = job.ctl; state.aq = null; state.aqState = 'loading';
+    job.p.then(function (a) {
+      if (job.ctl !== state.aqCtl || state.city !== city) return;
+      idle(function () {   // ana çizimle aynı görevde değil; boşta çizilir
+        if (job.ctl !== state.aqCtl || state.city !== city) return;
+        state.aq = a; state.aqState = 'ok'; state.aqT = Date.now(); refreshInsights(); if (swPerf && swPerf.city === city) { swm('sw-aq'); if (location.search.indexOf('perf') >= 0) console.table({ 'önbellekli': !!swPerf.cached, 'içerik (ms)': swPerf['sw-content'], 'veri (ms)': swPerf['sw-data'], 'hava kalitesi (ms)': swPerf['sw-aq'] }); }
+      }, 200);
+    }, function (e) {
+      if (e && e.name === 'AbortError' || job.ctl !== state.aqCtl || state.city !== city) return;
+      state.aqState = 'error'; refreshInsights();
+    });
+  }
+  function loadAQ(city) {
+    if (state.aqCtl) state.aqCtl.abort();
+    applyAQ(fetchAQ(city), city);
   }
 
   // ---------- Harita / radar (tembel yükleme) ----------
@@ -577,12 +597,25 @@
   });
 
   // ---------- Favoriler ----------
-  function renderFavs() {
-    document.dispatchEvent(new Event('hd2:cities'));   // bildirim kartı izlenen şehirleri günceller (notify.js)
+  var favSig = null, ntSig = null;
+  function renderFavs(cur) {
+    cur = cur || state.city;
+    var sig = JSON.stringify(state.favs.map(function (f) { return [f.id, f.name, f.admin, f.dup]; })), curId = cur ? cityId(cur) : '';
+    // Bildirim senkronu (notify.js): izlenen şehirler = favoriler; favori yoksa seçili şehir. Yalnızca bunlar değişince, ana çizimin dışında (boşta) bildirilir
+    var nt = state.favs.length ? sig : sig + '|' + (state.city ? cityId(state.city) : '');   // geçici seçili çip değil, gerçekten yüklenen şehir
+    if (nt !== ntSig) { ntSig = nt; idle(function () { document.dispatchEvent(new Event('hd2:cities')); }, 500); }
+    if (sig === favSig) {   // liste aynı: çipleri yeniden kurma, yalnızca seçili olanı değiştir
+      Array.prototype.forEach.call(el.favs.querySelectorAll('.chip'), function (ch) {
+        var b = ch.querySelector('.chip-go'), on = b.dataset.id === curId;
+        if (ch.classList.contains('on') !== on) { ch.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }
+      });
+      return;
+    }
+    favSig = sig;
     if (!state.favs.length) { el.favs.hidden = true; el.favs.textContent = ''; return; }
     el.favs.hidden = false;
     el.favs.innerHTML = state.favs.map(function (f) {
-      var on = state.city && cityId(state.city) === f.id;
+      var on = cur && cityId(cur) === f.id;
       return '<span class="chip' + (on ? ' on' : '') + '"><button type="button" class="chip-go" data-id="' + esc(f.id) + '"' + (on ? ' aria-current="true"' : '') + '>' + esc(favLabel(f)) + '</button>' +
         '<button type="button" class="chip-x" data-rm="' + esc(f.id) + '" aria-label="' + esc(favLabel(f)) + ' favorilerden çıkar">' + uiIcon('close', 14) + '</button></span>';
     }).join('');
@@ -628,15 +661,20 @@
   }
 
   // ---------- Çevrimdışı: son başarılı veri ----------
+  var wxMem = null, wxTimer = 0;   // bellekte tutulur: her geçişte tüm önbellek JSON'u okunup yazılmaz
+  function wxAll() { if (!wxMem) wxMem = store(WX_KEY) || {}; return wxMem; }
+  function wxFlush() { wxTimer = 0; if (wxMem) store(WX_KEY, wxMem); }
   function saveWx(city, data) {
-    var all = store(WX_KEY) || {}, id = cityId(city), ids;
+    var all = wxAll(), id = cityId(city), ids;
     all[id] = { city: city, data: data, t: Date.now() };
     ids = Object.keys(all).sort(function (a, b) { return all[b].t - all[a].t; });
     ids.slice(WX_MAX).forEach(function (k) { delete all[k]; });
-    store(WX_KEY, all);
+    if (!wxTimer) wxTimer = setTimeout(function () { idle(wxFlush, 1500); }, 400);   // yazım ana akışın dışında, birleştirilerek
   }
+  document.addEventListener('visibilitychange', function () { if (document.hidden && wxTimer) { clearTimeout(wxTimer); wxFlush(); } });
+  window.addEventListener('pagehide', function () { if (wxTimer) { clearTimeout(wxTimer); wxFlush(); } });
   function loadWx(city) {
-    var all = store(WX_KEY), h = all && all[cityId(city)];
+    var all = wxAll(), h = all && all[cityId(city)];
     if (!h || !h.data || !h.data.current || Date.now() - h.t > WX_MAX_AGE || h.t > Date.now() + 60000) return null;
     return h;
   }
@@ -681,36 +719,62 @@
 
   // ---------- Veri ----------
   function afterBoot(fn) { if (boot.booting) boot.q = fn; else fn(); }   // açılışta yalnızca sonuncusu çalışır
+  var swPerf = null; window.__hdSw = function () { return swPerf; };   // son şehir geçişinin ölçümü (Performance API işaretleri + ms)
+  function swm(n) { mark(n); if (swPerf) swPerf[n] = Math.round(performance.now() - swPerf.t0); }
   function applyFresh(city, data, opts) {
+    var prev = state.city, sameCity = prev && cityId(prev) === cityId(city);
     state.city = city; state.data = data; state.stale = false;
     el.content.classList.remove('is-stale');
-    if (state.aqCtl) state.aqCtl.abort();
-    state.aq = null; state.aqState = 'loading';
+    if (opts && opts.aqJob) { if (state.aqCtl && state.aqCtl !== opts.aqJob.ctl) state.aqCtl.abort(); applyAQ(opts.aqJob, city); }
+    else if (sameCity && (state.aqState === 'loading' || (state.aqState === 'ok' && Date.now() - (state.aqT || 0) < FRESH_MS))) { /* aynı şehir: hava kalitesi zaten var/yolda, yeniden istenmez */ }
+    else { if (state.aqCtl) state.aqCtl.abort(); state.aq = null; state.aqState = 'loading'; afterBoot(function () { if (state.city === city) loadAQ(city); }); }
     store(LAST_KEY, city);
     if (!(opts && opts.fromCache)) saveWx(city, data);   // önbellekten gelen veri "şimdi alındı" diye yeniden damgalanmaz
     render(city, data, opts);
     renderFavs();
-    afterBoot(function () { if (state.city === city) loadAQ(city); });   // hava kalitesi isteği/çizimi açılış geçişini geciktirmesin
+    if (swPerf && swPerf.city === city && swPerf['sw-content'] == null) swm('sw-content');
     document.title = Math.round(data.current.temperature_2m) + '° ' + city.name + ' · Hava Durumum';
   }
   function loadCity(city, o) {
     o = o || {};
     if (state.loadCtl) state.loadCtl.abort();
-    var ctl = state.loadCtl = new AbortController(), timer = 0;
+    var ctl = state.loadCtl = new AbortController(), timer = 0, cached = false, aqJob = null, showCache = null;
+    // Şehir değişimi: ekran boşaltılmaz; eski içerik görünür kalır, başlıkta isim + küçük döner simge, veri gelince yumuşakça yer değiştirir
+    var sw = !o.cold && !o.silent && !boot.booting && state.data && state.city && cityId(state.city) !== cityId(city);
+    if (sw) {
+      swPerf = { city: city, t0: performance.now() }; mark('sw-start');
+      el.app.classList.add('switching');
+      var h1 = el.content.querySelector('.hero h1'), sb = el.content.querySelector('.hero .sub');
+      if (h1) h1.textContent = city.name;
+      if (sb) { var lb = cityLabel(city), dt = sb.textContent.split(' · ').pop(); sb.textContent = lb + (lb ? ' · ' : '') + dt; }   // alt satırda eski şehrin adı kalmasın
+      renderFavs(city); say('');
+      hideSuggest();
+      if (state.aqCtl) state.aqCtl.abort();
+      aqJob = fetchAQ(city);   // tahminle paralel
+      var hit0 = loadWx(city);
+      if (hit0 && Date.now() - hit0.t <= SWITCH_CACHE_MAX) {   // son bilinen veri anında; arkada sessizce yenilenir
+        cached = true; swPerf.cached = true;
+        showCache = function () { applyFresh(city, hit0.data, { fromCache: true, soft: true, aqJob: aqJob }); aqJob = null; swm('sw-cache'); };
+      }
+    }
     if (o.cold) timer = setTimeout(function () { ctl.timedOut = true; ctl.abort(); }, COLD_TIMEOUT);   // yavaş ağda boş ekran yerine önbellek/hata
     hideSuggest();
-    if (!o.silent) { say(''); el.app.classList.add('loading'); }
+    if (!o.silent && !sw) { say(''); el.app.classList.add('loading'); }
     var url = API_FORECAST + '?latitude=' + city.lat + '&longitude=' + city.lon +
       '&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,wind_speed_10m,wind_direction_10m' +
       '&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,is_day,wind_speed_10m,uv_index' +
       '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,uv_index_max,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset' +
       '&forecast_days=10&timezone=auto&wind_speed_unit=kmh';
-    return fetch(url, { signal: ctl.signal })
+    var req = fetch(url, { signal: ctl.signal });   // ağ isteği önce yola çıkar, önbellek çizimi sonra
+    if (showCache) showCache();
+    return req
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (data) {
-        mark('data');
-        if (o.silent && state.data && state.data.current && data.current && state.data.current.time === data.current.time) { saveWx(city, data); return; }   // aynı ölçüm: ekrana dokunma
-        applyFresh(city, data, o.silent ? { noReveal: true } : null);
+        mark('data'); if (sw) swm('sw-data');
+        if (state.loadCtl !== ctl) return;   // arada başka şehir seçildi: geç gelen eski yanıt ekranı ezmez
+        if ((o.silent || cached) && state.data && state.data.current && data.current && state.data.current.time === data.current.time) { saveWx(city, data); return; }   // aynı ölçüm: ekrana dokunma
+        var aj = aqJob; aqJob = null;
+        applyFresh(city, data, o.silent || cached ? { noReveal: true } : sw ? { soft: true, aqJob: aj } : null);
       })
       .catch(function (err) {
         if (err.name === 'AbortError' && !ctl.timedOut) return;
@@ -718,7 +782,7 @@
         if (hit) {
           // Eski veri güncelmiş gibi gösterilmez: uyarı çubuğu + soluk ana kart
           state.stale = true;
-          if (!o.silent) {   // sessiz yenileme: ekrandaki önbellek verisi zaten çizili, yeniden çizilmez (yalnızca uyarı eklenir)
+          if (!o.silent && !cached) {   // sessiz yenileme: ekrandaki önbellek verisi zaten çizili, yeniden çizilmez (yalnızca uyarı eklenir)
             state.city = city; state.data = hit.data;
             if (state.aqCtl) state.aqCtl.abort();
             state.aq = null; state.aqState = 'error';
@@ -737,7 +801,16 @@
           say('Hava durumu alınamadı. İnternet bağlantını kontrol edip tekrar dene.', function () { loadCity(city); });
         }
       })
-      .then(function () { clearTimeout(timer); if (state.loadCtl === ctl) { el.app.classList.remove('loading'); hideSplash(); } });
+      .then(function () {
+        clearTimeout(timer);
+        if (state.loadCtl !== ctl) return;
+        el.app.classList.remove('loading'); el.app.classList.remove('switching'); hideSplash();
+        if (sw && aqJob) { aqJob.ctl.abort(); aqJob = null; if (state.aqState === 'loading' && state.city) loadAQ(state.city); }   // hata: ekrandaki şehrin hava kalitesi yarım kalmasın
+        if (sw && state.city) {   // hata durumunda başlık/çip, ekrandaki gerçek şehre geri döner
+          var h = el.content.querySelector('.hero h1'); if (h && h.textContent !== state.city.name) h.textContent = state.city.name;
+          renderFavs();
+        }
+      });
   }
 
   // ---------- Şehir arama (hibrit) ----------

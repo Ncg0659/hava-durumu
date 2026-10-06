@@ -233,6 +233,22 @@
     var b = $(S.box, '#rPlay'); b.innerHTML = global.uiIcon(on ? 'pause' : 'play', 20); b.setAttribute('aria-label', on ? 'Radarı durdur' : 'Radarı oynat');
   }
 
+  // Şehir değişince harita yeniden kurulmaz: yalnızca merkez + işaret güncellenir
+  function update(ctx) {
+    if (!S || S.dead) return false;
+    var same = S.ctx.city.lat === ctx.city.lat && S.ctx.city.lon === ctx.city.lon && S.ctx.city.name === ctx.city.name && S.ctx.temp === ctx.temp && S.ctx.kind === ctx.kind;
+    S.ctx = ctx;
+    if (same) return true;
+    var c = [ctx.city.lon, ctx.city.lat], el = S.marker.getElement();
+    el.innerHTML = '<div class="wm-pin" role="img" aria-label="' + esc(ctx.city.name + ', ' + dg(ctx.temp) + ', ' + ctx.text) + '">' +
+      global.weatherIcon(ctx.kind, ctx.isDay, 26, false) + (ctx.city.dist ? '<span class="wm-n">' + esc(ctx.city.name) + '</span>' : '') + '<span>' + dg(ctx.temp) + '</span></div>';
+    S.marker.setLngLat(c);
+    S.map.jumpTo({ center: c });
+    setTitle();
+    var my = S; setTimeout(function () { if (S === my && !my.dead) my.map.resize(); }, 0);
+    return true;
+  }
+
   function destroy() {
     if (!S) return;
     var s = S; S = null; s.dead = true;
@@ -241,5 +257,5 @@
     try { s.box.removeEventListener('click', onClick); s.map.remove(); } catch (e) { /* DOM zaten kalkmış olabilir */ }
   }
 
-  global.WeatherMap = { open: open, destroy: destroy, _state: function () { return S; } };
+  global.WeatherMap = { open: open, update: update, destroy: destroy, _state: function () { return S; } };
 })(window);

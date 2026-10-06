@@ -25,7 +25,7 @@ ul { list-style: none; }
 
 /* ---------- Gökyüzü katmanları ---------- */
 #sky { position: fixed; inset: 0; z-index: -3; }
-.sky-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
+.sky-layer { position: absolute; inset: 0; opacity: 0; transition: opacity .28s ease; }   /* tema geçişi: kısa, belirgin sıçrama yok */
 .sky-layer.on { opacity: 1; }
 #sky.nt .sky-layer { transition: none; }   /* ilk tema, splash'ın altında anında oturur */
 [data-theme="clear-day"]   { background: linear-gradient(180deg, #1668c9 0%, #2f8fe0 45%, #6bb8ee 100%); }
@@ -94,6 +94,8 @@ h2 { font-size: 15px; font-weight: 600; color: var(--ink-2); white-space: nowrap
 /* ---------- Ana alan (gökyüzünün üstünde, kutusuz) ---------- */
 #content { transition: opacity .3s ease; }
 .loading #content { opacity: .55; }
+/* Şehir değişimi: içerik silinmez/soluklaşmaz; başlığın yanında küçük döner simge */
+.switching .hero h1::after { content: ''; display: inline-block; width: .5em; height: .5em; margin-left: .45em; vertical-align: .08em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; opacity: .7; animation: spin .7s linear infinite; }
 .reveal { animation: rise .5s cubic-bezier(.2, .7, .2, 1); }   /* yalnızca Web Animations API olmayan tarayıcılar için yedek */
 html.boot #content { opacity: 0; }   /* ana içerik hazır olup splash kalkarken birlikte belirir */
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
