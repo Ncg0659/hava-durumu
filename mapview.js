@@ -80,7 +80,7 @@
     var el = document.createElement('div');
     el.className = 'wm';
     el.innerHTML = '<div class="wm-pin" role="img" aria-label="' + esc(ctx.city.name + ', ' + dg(ctx.temp) + ', ' + ctx.text) + '">' +
-      global.weatherIcon(ctx.kind, ctx.isDay, 26, false) + '<span>' + dg(ctx.temp) + '</span></div>';
+      global.weatherIcon(ctx.kind, ctx.isDay, 26, false) + (ctx.city.dist ? '<span class="wm-n">' + esc(ctx.city.name) + '</span>' : '') + '<span>' + dg(ctx.temp) + '</span></div>';
     var marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] }).setLngLat([ctx.city.lon, ctx.city.lat]).addTo(map);
 
     S = { box: box, map: map, marker: marker, ctx: ctx, mode: 'map', onClose: onClose, radar: null, cur: -1, timer: 0, playing: false,

@@ -33,7 +33,11 @@
     var out = [];
     try { out = (JSON.parse(ls('hd2:favs') || '[]') || []).slice(0, 3); } catch (e) { out = []; }
     if (!out.length) { try { var l = JSON.parse(ls('hd2:last') || 'null'); if (l) out = [l]; } catch (e) { /* yok */ } }
-    return out.filter(function (c) { return c && isFinite(c.lat) && isFinite(c.lon) && c.name; }).map(function (c) { return { name: c.name, lat: c.lat, lon: c.lon }; });
+    return out.filter(function (c) { return c && isFinite(c.lat) && isFinite(c.lon) && c.name; }).map(function (c) {
+      var o = { name: c.name, lat: c.lat, lon: c.lon };
+      if (c.dist && c.prov) { o.province = c.prov; o.district = c.dist; if (c.dup) o.name = c.name + ' (' + c.prov + ')'; }   // il/ilçe seçimi; aynı adlı ilçede bildirimde il adı da görünür
+      return o;
+    });
   }
   function tz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } }
   function api(path, body, method) {

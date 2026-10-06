@@ -407,3 +407,39 @@ html.lock, html.lock body { overflow: hidden; }
 .nt-more ul { list-style: none; padding: 0; margin: 4px 0 0; }
 .nt-more li { display: flex; flex-direction: column; gap: 1px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
 .nt-more li span { font-size: 12.5px; opacity: .8; }
+
+/* ================= Türkiye il → ilçe seçimi ================= */
+.top-row { display: flex; align-items: center; gap: 8px; }
+.top-row .search { flex: 1; min-width: 0; }
+.loc-btn { flex: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .12); color: var(--ink-2); transition: background .2s; }
+.loc-btn:active { background: rgba(255, 255, 255, .26); }
+@media (hover: hover) { .loc-btn:hover { background: rgba(255, 255, 255, .24); } }
+.sheet.loc { display: flex; flex-direction: column; height: min(560px, 86vh); height: min(560px, 86dvh); max-height: 100%; overflow: hidden; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+#locBody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sh-sp { flex: none; width: 40px; height: 40px; }
+.lp-view { animation: lpIn .18s ease-out; }
+@keyframes lpIn { from { opacity: 0; transform: translate3d(0, 6px, 0); } to { opacity: 1; transform: none; } }
+.lp-fields { display: flex; flex-direction: column; margin-top: 8px; }
+.lp-lab { margin: 12px 4px 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; color: var(--ink-3); }
+.lp-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 52px; padding: 0 12px 0 16px; border-radius: 16px; background: rgba(255, 255, 255, .08); font-size: 17px; text-align: left; }
+.lp-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-row .ph { color: var(--ink-3); }
+.lp-row svg, .lp-item svg { flex: none; color: var(--ink-3); }
+.lp-note { margin: 16px 4px 0; font-size: 13px; color: var(--ink-3); }
+.lp-foot { margin-top: auto; padding-top: 14px; }
+.lp-go { width: 100%; min-height: 50px; border-radius: 999px; background: #fff; color: var(--navy); font-size: 16px; font-weight: 650; }
+.lp-go:disabled { opacity: .4; cursor: default; }
+.lp-search { display: flex; align-items: center; gap: 8px; flex: none; height: 42px; margin: 12px 0 6px; padding: 0 14px; border-radius: 999px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .12); }
+.lp-search:focus-within { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .4); }
+.lp-q { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
+.lp-q::-webkit-search-cancel-button { -webkit-appearance: none; }
+.lp-q::placeholder { color: var(--ink-2); }
+.lp-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.lp-list li + li { border-top: 1px solid rgba(255, 255, 255, .07); }
+.lp-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 46px; padding: 0 8px 0 10px; border-radius: 12px; font-size: 16px; text-align: left; }
+.lp-item > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-item.on { background: rgba(255, 255, 255, .14); font-weight: 650; }
+.lp-item:active { background: rgba(255, 255, 255, .18); }
+@media (hover: hover) { .lp-item:hover { background: rgba(255, 255, 255, .1); } }
+.lp-empty { padding: 20px 8px; text-align: center; color: var(--ink-3); }
+.wm-n { margin: 0 5px 0 3px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }

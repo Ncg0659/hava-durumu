@@ -142,7 +142,9 @@
     app: $('app'), content: $('content'), msg: $('msg'), q: $('q'), form: $('search'), suggest: $('suggest'),
     favs: $('favs'), sky: $('sky'), fx: $('fx'), theme: document.querySelector('meta[name="theme-color"]')
   };
-  function cityId(c) { return c.lat.toFixed(2) + ',' + c.lon.toFixed(2); }
+  // İl/ilçe seçilen konumlarda kimlik 'İl|İlçe' (aynı adlı ilçeler karışmaz); aramadan gelenlerde koordinat
+  function cityId(c) { return c.id || (c.lat.toFixed(2) + ',' + c.lon.toFixed(2)); }
+  function favLabel(f) { return f.dup && f.admin ? f.name + ' (' + f.admin + ')' : f.name; }   // aynı adlı ilçede il adı da görünür
   function isFav(c) { return state.favs.some(function (f) { return f.id === cityId(c); }); }
   function cityLabel(c) { return [c.admin && c.admin !== c.name ? c.admin : '', c.country].filter(Boolean).join(', '); }
 
@@ -581,8 +583,8 @@
     el.favs.hidden = false;
     el.favs.innerHTML = state.favs.map(function (f) {
       var on = state.city && cityId(state.city) === f.id;
-      return '<span class="chip' + (on ? ' on' : '') + '"><button type="button" class="chip-go" data-id="' + esc(f.id) + '"' + (on ? ' aria-current="true"' : '') + '>' + esc(f.name) + '</button>' +
-        '<button type="button" class="chip-x" data-rm="' + esc(f.id) + '" aria-label="' + esc(f.name) + ' favorilerden çıkar">' + uiIcon('close', 14) + '</button></span>';
+      return '<span class="chip' + (on ? ' on' : '') + '"><button type="button" class="chip-go" data-id="' + esc(f.id) + '"' + (on ? ' aria-current="true"' : '') + '>' + esc(favLabel(f)) + '</button>' +
+        '<button type="button" class="chip-x" data-rm="' + esc(f.id) + '" aria-label="' + esc(favLabel(f)) + ' favorilerden çıkar">' + uiIcon('close', 14) + '</button></span>';
     }).join('');
   }
   function syncFavBtn() {
@@ -597,7 +599,9 @@
     if (isFav(c)) state.favs = state.favs.filter(function (f) { return f.id !== id; });
     else {
       if (state.favs.length >= MAX_FAVS) { say('En fazla ' + MAX_FAVS + ' favori şehir ekleyebilirsin.'); return; }
-      state.favs.push({ id: id, name: c.name, admin: c.admin, country: c.country, lat: c.lat, lon: c.lon });
+      var fv = { id: id, name: c.name, admin: c.admin, country: c.country, lat: c.lat, lon: c.lon };
+      if (c.dist) { fv.prov = c.prov; fv.dist = c.dist; if (c.dup) fv.dup = 1; }   // il/ilçe seçimi (bildirim sunucusuna da gider)
+      state.favs.push(fv);
     }
     store(FAV_KEY, state.favs);
     renderFavs(); syncFavBtn();
@@ -791,6 +795,24 @@
   });
   el.suggest.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) pick(+b.dataset.i); });
   document.addEventListener('click', function (e) { if (!e.target.closest('.top')) hideSuggest(); });
+
+  // ---------- Türkiye il → ilçe seçimi (places.js + locations-tr.json ilk dokunuşta yüklenir) ----------
+  window.HD = { load: function (c) { el.q.value = ''; loadCity(c); }, current: function () { return state.city; }, say: say };
+  var placesLoad = null;
+  function ensurePlaces() {
+    if (window.HDPlaces) return Promise.resolve();
+    if (placesLoad) return placesLoad;
+    placesLoad = (injectInline('lazy-places-js', 'js') ? Promise.resolve() : loadExternal('places.js', 'js'))
+      .then(function () { if (!window.HDPlaces) throw new Error('places.js eksik'); })
+      .catch(function (e) { placesLoad = null; throw e; });
+    return placesLoad;
+  }
+  $('locBtn').innerHTML = uiIcon('pin', 20);
+  $('locBtn').addEventListener('click', function () {
+    var b = this;
+    ensurePlaces().then(function () { window.HDPlaces.open(b); })
+      .catch(function () { say('İl/ilçe listesi yüklenemedi. Bağlantını kontrol edip tekrar dene.'); });
+  });
 
   // ---------- Başlangıç ----------
   $('searchIcon').innerHTML = uiIcon('search', 18);

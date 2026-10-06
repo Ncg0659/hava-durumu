@@ -11,10 +11,10 @@
    değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
    Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
 'use strict';
-var BUILD = 'ad25ee8a';
+var BUILD = 'bdbaf3db';
 var PREFIX = 'hd2-shell-';
 var CACHE = PREFIX + BUILD;
-var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'insights.js', 'pwa.js', 'notify.js', 'manifest.webmanifest',
+var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'insights.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png', 'icons/favicon-32.png', 'icons/favicon-64.png', 'icons/badge-96.png'];
 var LAZY = /\/(vendor\/maplibre\/[^/]+|mapview\.js)$/;   // ilk kullanımda önbelleğe girer

@@ -25,3 +25,11 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 - Web Push, RFC 8030/8291/8292'ye göre bu projede yazıldı; yalnızca tarayıcı/Workers yerleşik WebCrypto kullanılır. Üçüncü taraf kod/kütüphane yok.
 - Sunucu: Cloudflare Workers Free + KV Free (ücretsiz katman; kart gerekmez). Veri: Open-Meteo (CC BY 4.0).
 - Sunucuda saklanan: push abonelik adresi/anahtarları, en çok 3 şehrin yuvarlanmış koordinatı, saat dilimi, gönderim kayıtları.
+
+## Aşama 5 — Türkiye il → ilçe seçimi
+- **Veri:** `locations-tr.json` (81 il, 973 ilçe; il adı, ilçe adı, ilçe merkezi enlem/boylam, 3 ondalık; 27,7 KB). Hiçbir servise sorulmaz, yerel dosyadır.
+- **Kaynak:** [osadikoglu/turkey-admin-units-osm](https://github.com/osadikoglu/turkey-admin-units-osm) sürüm `osm-2026-09-13` (`admin-tr.csv`; SHA-256 yayıncının SHA256SUMS listesiyle doğrulandı). Bu veri tabanı OpenStreetMap'ten (Geofabrik Türkiye özeti 2026-09-13) türetilmiştir.
+- **Lisans:** © OpenStreetMap katkıcıları, **ODbL 1.0**. `locations-tr.json` türev veri tabanı olduğu için aynı lisansla ve atıfla paylaşılır; atıf uygulama altbilgisinde ve dosyanın `src` alanında vardır. Tam metin ve ayrıntı: `licenses/ODbL-1.0.txt`, `licenses/locations-tr-NOTICE.md`. Uygulamanın kendi kodu bu lisansa tabi değildir.
+- **Doğrulama:** Çayeli ve Akçakoca merkez koordinatları Open-Meteo geocoder'ıyla karşılaştırıldı (fark ≈ 200 m); her ilçenin ilinden uzaklığı makul sınırlar içinde.
+- **Üretim:** `node tools/build_locations.mjs admin-tr.csv locations-tr.json` (yalnızca il/ilçe/lat/lon alınır, Türkçe alfabe sırası). Mahalle ve köy alınmaz.
+- `places.js`: seçim paneli (bu projede yazıldı; üçüncü taraf kod yok). İlk kullanımda yüklenir.
