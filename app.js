@@ -740,23 +740,47 @@
       .then(function () { clearTimeout(timer); if (state.loadCtl === ctl) { el.app.classList.remove('loading'); hideSplash(); } });
   }
 
-  // ---------- Şehir arama ----------
+  // ---------- Şehir arama (hibrit) ----------
+  // Türkiye il/ilçe: yerel veriden (places.js + locations-tr.json), tekrar geocode edilmez. Dünya: Open-Meteo geocoder.
   function geocode(q, count, signal) {
     return fetch(API_GEO + '?count=' + count + '&language=tr&name=' + encodeURIComponent(q), { signal: signal })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (j) {
         return (j.results || []).map(function (x) {
-          return { name: x.name, admin: x.admin1 || '', country: x.country || '', lat: x.latitude, lon: x.longitude };
+          return { name: x.name, admin: x.admin1 || '', country: x.country || '', cc: x.country_code || '', lat: x.latitude, lon: x.longitude };
         });
       });
   }
-  function hideSuggest() { el.suggest.hidden = true; el.suggest.textContent = ''; state.items = []; state.active = -1; el.q.setAttribute('aria-expanded', 'false'); }
+  var qs = { id: 0, q: '', local: null, world: null, worldErr: false };   // son aramanın durumu (yerel + dünya sonuçları ayrı gelir)
+  function isTr(c) { return c.cc === 'TR' || c.country === 'Türkiye'; }
+  function suggestSub(c) {   // ikinci satır: "İstanbul · Türkiye", "Türkiye", "England · United Kingdom"
+    return [c.admin && c.admin !== c.name ? c.admin : '', c.country || (c.prov ? 'Türkiye' : '')].filter(Boolean).join(' · ');
+  }
+  function localSearch(q) {
+    return ensurePlaces().then(function () { return window.HDPlaces.search(q, 7); }).catch(function () { return []; });
+  }
+  function hideSuggest() {
+    qs.id++; clearTimeout(timer); if (state.geoCtl) state.geoCtl.abort();   // yoldaki arama sonuçları listeyi geri açmasın (seçim/kapatma sonrası)
+    el.suggest.hidden = true; el.suggest.textContent = ''; state.items = []; state.active = -1; el.q.setAttribute('aria-expanded', 'false');
+  }
   function showSuggest(items) {
     state.items = items; state.active = -1;
     el.suggest.innerHTML = items.map(function (c, i) {
-      return '<li role="option" id="s' + i + '"><button type="button" data-i="' + i + '"><b>' + esc(c.name) + '</b><span>' + esc(cityLabel(c)) + '</span></button></li>';
+      return '<li role="option" id="s' + i + '"><button type="button" data-i="' + i + '"><b>' + esc(c.name) + '</b><span>' + esc(suggestSub(c)) + '</span></button></li>';
     }).join('');
     el.suggest.hidden = false; el.q.setAttribute('aria-expanded', 'true');
+  }
+  function mergeItems() {
+    var loc = qs.local || [], world = qs.world || [];
+    if (loc.length) world = world.filter(function (c) { return !isTr(c); });   // Türkiye il/ilçesi yerel veriden geldiyse geocoder'ın Türkiye eşleşmeleri (aynı yer, köy, mahalle) gizlenir
+    return loc.concat(world).slice(0, 10);
+  }
+  function paintSuggest() {
+    var items = mergeItems();
+    if (items.length) { say(''); showSuggest(items); return; }
+    if (qs.local === null || (qs.world === null && !qs.worldErr)) return;   // sonuçlardan biri hâlâ bekleniyor
+    hideSuggest();
+    say(qs.worldErr ? 'Şehir araması şu an çalışmıyor. Biraz sonra tekrar dene.' : '"' + qs.q + '" için şehir bulunamadı. Yazımı kontrol et.');
   }
   function pick(i) { var c = state.items[i]; if (!c) return; el.q.value = ''; loadCity(c); }
   function setActive(i) {
@@ -765,16 +789,18 @@
     if (i >= 0) el.q.setAttribute('aria-activedescendant', 's' + i); else el.q.removeAttribute('aria-activedescendant');
   }
   var timer;
+  el.q.addEventListener('focus', function () { ensurePlaces().then(function () { return window.HDPlaces.load(); }).catch(function () { /* yazınca yeniden denenir */ }); }, { once: true });   // yerel liste yazmaya başlamadan hazır olsun
   el.q.addEventListener('input', function () {
     clearTimeout(timer);
-    var q = el.q.value.trim();
-    if (q.length < 2) { hideSuggest(); return; }
+    var q = el.q.value.trim(), id = ++qs.id;
+    if (q.length < 2) { if (state.geoCtl) state.geoCtl.abort(); hideSuggest(); return; }
+    qs.q = q; qs.local = null; qs.world = null; qs.worldErr = false;
+    localSearch(q).then(function (r) { if (id !== qs.id) return; qs.local = r; paintSuggest(); });   // yerel sonuçlar hemen
     timer = setTimeout(function () {
       if (state.geoCtl) state.geoCtl.abort();
       var ctl = state.geoCtl = new AbortController();
-      geocode(q, 5, ctl.signal).then(function (items) {
-        if (items.length) { say(''); showSuggest(items); } else { hideSuggest(); say('"' + q + '" için şehir bulunamadı. Yazımı kontrol et.'); }
-      }).catch(function (e) { if (e.name !== 'AbortError') { hideSuggest(); say('Şehir araması şu an çalışmıyor. Biraz sonra tekrar dene.'); } });
+      geocode(q, 12, ctl.signal).then(function (items) { if (id !== qs.id) return; qs.world = items; paintSuggest(); })
+        .catch(function (e) { if (e.name === 'AbortError' || id !== qs.id) return; qs.world = []; qs.worldErr = true; paintSuggest(); });
     }, 300);
   });
   el.q.addEventListener('keydown', function (e) {
@@ -789,8 +815,11 @@
     if (state.items.length) { pick(state.active >= 0 ? state.active : 0); return; }
     var q = el.q.value.trim();
     if (q.length < 2) return;
-    geocode(q, 1).then(function (items) {
-      if (items.length) { el.q.value = ''; loadCity(items[0]); } else say('"' + q + '" için şehir bulunamadı. Yazımı kontrol et.');
+    localSearch(q).then(function (loc) {   // liste henüz çıkmadan Enter: önce yerel Türkiye sonucu, yoksa geocoder'ın ilk sonucu
+      if (loc.length) { el.q.value = ''; loadCity(loc[0]); return; }
+      return geocode(q, 12).then(function (items) {
+        if (items.length) { el.q.value = ''; loadCity(items[0]); } else say('"' + q + '" için şehir bulunamadı. Yazımı kontrol et.');
+      });
     }).catch(function () { say('Şehir araması şu an çalışmıyor. Biraz sonra tekrar dene.'); });
   });
   el.suggest.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) pick(+b.dataset.i); });

@@ -25,7 +25,7 @@
         if (!j || !Array.isArray(j.il) || !j.il.length) throw new Error('veri bozuk');
         var count = {};
         var il = j.il.map(function (p) {
-          return { n: p[0], f: fold(p[0]), d: p[1].map(function (d) { count[d[0]] = (count[d[0]] || 0) + 1; return { n: d[0], f: fold(d[0]), lat: d[1], lon: d[2] }; }) };
+          return { n: p[0], f: fold(p[0]), lat: p[1], lon: p[2], d: p[3].map(function (d) { count[d[0]] = (count[d[0]] || 0) + 1; return { n: d[0], f: fold(d[0]), lat: d[1], lon: d[2] }; }) };
         });
         data = { il: il, dup: count };
         return data;
@@ -92,11 +92,36 @@
       if (S.dist < 0) list('dist'); else root();   // il seçilince doğrudan ilçe listesi: akış kısa
     } else { S.dist = i; root(); }
   }
+  // Konum nesneleri (panel ve arama çubuğu aynı biçimi kullanır): ilçe kimliği 'İl|İlçe', il kimliği 'İl'
+  function distCity(p, d) { return { id: p.n + '|' + d.n, name: d.n, admin: p.n, country: '', lat: d.lat, lon: d.lon, prov: p.n, dist: d.n, dup: data.dup[d.n] > 1 ? 1 : 0 }; }
+  function provCity(p) { return { id: p.n, name: p.n, admin: p.n, country: 'Türkiye', lat: p.lat, lon: p.lon, prov: p.n }; }
   function use() {
     if (S.prov < 0 || S.dist < 0) return;
-    var p = data.il[S.prov], d = p.d[S.dist];
+    var p = data.il[S.prov];
     close(true);
-    window.HD.load({ id: p.n + '|' + d.n, name: d.n, admin: p.n, country: '', lat: d.lat, lon: d.lon, prov: p.n, dist: d.n, dup: data.dup[d.n] > 1 ? 1 : 0 });
+    window.HD.load(distCity(p, p.d[S.dist]));
+  }
+
+  // ---------- Arama çubuğu için yerel arama (Türkiye il/ilçe) ----------
+  // Sıra: 1) tam eşleşen ilçe 2) tam eşleşen il 3) adı sorguyla başlayanlar (önce iller) 4) diğer eşleşmeler
+  function search(q, limit) {
+    var f = fold(q); limit = limit || 7;
+    if (f.length < 2) return Promise.resolve([]);
+    return load().then(function () {
+      var t1 = [], t2 = [], t3p = [], t3d = [], t4 = [];
+      data.il.forEach(function (p) {
+        if (p.f === f) t2.push(provCity(p));
+        else if (p.f.indexOf(f) === 0) t3p.push(provCity(p));
+        else if (f.length >= 3 && p.f.indexOf(f) > 0) t4.push(provCity(p));
+        p.d.forEach(function (d) {
+          var dp = d.f + ' ' + p.f, pd = p.f + ' ' + d.f;   // "kadikoy istanbul" ve "istanbul kadikoy" biçimleri de bulunur
+          if (d.f === f || dp === f) t1.push(distCity(p, d));
+          else if (d.f.indexOf(f) === 0 || dp.indexOf(f) === 0) t3d.push(distCity(p, d));
+          else if ((f.indexOf(' ') > 0 && pd.indexOf(f) === 0) || (f.length >= 3 && d.f.indexOf(f) > 0)) t4.push(distCity(p, d));   // 'il ilçe' sırası yalnızca iki sözcük yazılınca (İstanbul yazınca tüm ilçeleri dökmesin)
+        });
+      });
+      return t1.concat(t2, t3p, t3d, t4).slice(0, limit);
+    });
   }
 
   // ---------- Panel aç/kapat (günlük ayrıntı paneliyle aynı kabuk) ----------
@@ -170,5 +195,5 @@
     grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
   })();
 
-  window.HDPlaces = { open: open, fold: fold, _data: function () { return data; } };
+  window.HDPlaces = { open: open, fold: fold, load: load, search: search, _data: function () { return data; } };
 })();
