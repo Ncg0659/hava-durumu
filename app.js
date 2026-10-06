@@ -556,6 +556,7 @@
 
   // ---------- Favoriler ----------
   function renderFavs() {
+    document.dispatchEvent(new Event('hd2:cities'));   // bildirim kartı izlenen şehirleri günceller (notify.js)
     if (!state.favs.length) { el.favs.hidden = true; el.favs.textContent = ''; return; }
     el.favs.hidden = false;
     el.favs.innerHTML = state.favs.map(function (f) {

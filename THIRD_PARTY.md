@@ -20,3 +20,8 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 ## Aşama 3 (PWA)
 - Uygulama simgeleri (`icons/`) ve iPhone açılış görselleri (`icons/splash/`) bu projede çizilmiş özgün çalışmalardır (`tools/make_icons.py`, `tools/make_splash.py`); üçüncü taraf simge/görsel kullanılmadı.
 - `sw.js` yalnızca bu sitenin kendi dosyalarını önbelleğe alır. OpenFreeMap, OpenStreetMap, RainViewer ve Open-Meteo yanıtları servis çalışanından geçirilmez ve saklanmaz; bu hizmetlerin kendi önbellek/kullanım kuralları geçerlidir.
+
+## Aşama 4 — Bildirimler
+- Web Push, RFC 8030/8291/8292'ye göre bu projede yazıldı; yalnızca tarayıcı/Workers yerleşik WebCrypto kullanılır. Üçüncü taraf kod/kütüphane yok.
+- Sunucu: Cloudflare Workers Free + KV Free (ücretsiz katman; kart gerekmez). Veri: Open-Meteo (CC BY 4.0).
+- Sunucuda saklanan: push abonelik adresi/anahtarları, en çok 3 şehrin yuvarlanmış koordinatı, saat dilimi, gönderim kayıtları.
