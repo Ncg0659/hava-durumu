@@ -1,4 +1,4 @@
-/* Hava Durumum: servis çalışanı (yalnızca https/localhost'ta çalışır).
+/* EYRIVO: servis çalışanı (yalnızca https/localhost'ta çalışır).
 
    NE ÖNBELLEKLENİR: yalnızca bu sitenin kendi dosyaları (HTML, CSS, JS, ikonlar, manifest; harita dosyaları
    MapLibre + mapview.js ilk kullanımda). Böylece uygulama arayüzü çevrimdışıyken de açılır.
@@ -11,7 +11,7 @@
    değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
    Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
 'use strict';
-var BUILD = '1f5dc526';
+var BUILD = '40b7590c';
 var PREFIX = 'hd2-shell-';
 var CACHE = PREFIX + BUILD;
 var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'insights.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest',
@@ -80,7 +80,7 @@ if (typeof self !== 'undefined' && self.addEventListener) {
   // Gerçek push: sunucudan gelen {title, body, tag, url} her zaman görünür bir bildirim olarak gösterilir
   self.addEventListener('push', function (e) {
     var d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = {}; }
-    e.waitUntil(self.registration.showNotification(d.title || 'Hava uyarısı', {
+    e.waitUntil(self.registration.showNotification(d.title || 'EYRIVO', {
       body: d.body || '', tag: d.tag || undefined, lang: 'tr',
       icon: scopeUrl('icons/icon-192.png'), badge: scopeUrl('icons/badge-96.png'),
       data: { url: d.url || self.registration.scope }

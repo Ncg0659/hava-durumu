@@ -733,7 +733,7 @@
     render(city, data, opts);
     renderFavs();
     if (swPerf && swPerf.city === city && swPerf['sw-content'] == null) swm('sw-content');
-    document.title = Math.round(data.current.temperature_2m) + '° ' + city.name + ' · Hava Durumum';
+    document.title = Math.round(data.current.temperature_2m) + '° ' + city.name + ' · EYRIVO';
   }
   function loadCity(city, o) {
     o = o || {};
@@ -791,7 +791,7 @@
             renderFavs();
           }
           el.content.classList.add('is-stale');
-          document.title = city.name + ' · Hava Durumum';
+          document.title = city.name + ' · EYRIVO';
           say((offline ? 'İnternet bağlantısı yok. ' : 'Güncel veri alınamadı. ') + 'Gösterilen veri eski. Son güncelleme: ' + stamp(hit.t) + '.', function () { loadCity(city); });
         } else if (o.silent) {
           return;

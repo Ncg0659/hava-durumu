@@ -18,7 +18,7 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 - GitHub projelerinden (julianverse-weather dahil) hiçbir kod kopyalanmadı.
 
 ## Aşama 3 (PWA)
-- Uygulama simgeleri (`icons/`) ve iPhone açılış görselleri (`icons/splash/`) bu projede çizilmiş özgün çalışmalardır (`tools/make_icons.py`, `tools/make_splash.py`); üçüncü taraf simge/görsel kullanılmadı.
+- Uygulama simgeleri (`icons/`) ve iPhone açılış görselleri (`icons/splash/`) bu projede çizilmiş özgün çalışmalardır (`tools/make_brand.py`); üçüncü taraf simge/görsel kullanılmadı.
 - `sw.js` yalnızca bu sitenin kendi dosyalarını önbelleğe alır. OpenFreeMap, OpenStreetMap, RainViewer ve Open-Meteo yanıtları servis çalışanından geçirilmez ve saklanmaz; bu hizmetlerin kendi önbellek/kullanım kuralları geçerlidir.
 
 ## Aşama 4 — Bildirimler
@@ -33,3 +33,7 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 - **Doğrulama:** Çayeli ve Akçakoca merkez koordinatları Open-Meteo geocoder'ıyla karşılaştırıldı (fark ≈ 200 m); her ilçenin ilinden uzaklığı makul sınırlar içinde.
 - **Üretim:** `node tools/build_locations.mjs admin-tr.csv locations-tr.json` (yalnızca il/ilçe/lat/lon alınır, Türkçe alfabe sırası). Arama çubuğu da bu veriyi kullanır (Türkiye il/ilçe yerelden, dünya Open-Meteo geocoder). Mahalle ve köy alınmaz.
 - `places.js`: seçim paneli (bu projede yazıldı; üçüncü taraf kod yok). İlk kullanımda yüklenir.
+
+## Marka (EYRIVO)
+- **Sembol:** 3 eğik bant; bu projede çizilmiş özgün, düz çokgenlerden oluşan bir çalışmadır. Başka bir logodan kopyalanmadı. Kaynak SVG'ler `brand/` klasöründedir; PNG ikonlar ve iPhone açılış görselleri `python3 tools/make_brand.py` ile üretilir.
+- **Yazı (EYRIVO):** Inter SemiBold harf konturlarından çıkarılmış SVG yolu. Inter, SIL Open Font License 1.1 ile lisanslıdır; metin ve telif notu: `licenses/Inter-OFL-NOTICE.md`.
