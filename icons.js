@@ -121,7 +121,19 @@
     download: '<path d="M12 3.500V15M8 11l4 4 4-4"/><path d="M4.500 19.500h15"/>',
     bell: '<path d="M6 16.500V11a6 6 0 0 1 12 0v5.500l1.500 2H4.500l1.500-2z"/><path d="M10 21h4"/>',
     pin: '<path d="M12 21s-6.500-5.600-6.500-11a6.500 6.500 0 0 1 13 0c0 5.400-6.500 11-6.500 11z"/><circle cx="12" cy="10" r="2.300"/>',
-    refresh: '<path d="M20 11a8 8 0 1 0-2.300 5.700"/><path d="M20 4.500V11h-6.500"/>'
+    refresh: '<path d="M20 11a8 8 0 1 0-2.300 5.700"/><path d="M20 4.500V11h-6.500"/>',
+    cloud: '<path d="M7 18.500a4 4 0 0 1-.6-7.960A5.500 5.500 0 0 1 17 9.500a4.500 4.500 0 0 1 .5 9H7z"/>',
+    eye: '<path d="M2.500 12S6 5.500 12 5.500 21.500 12 21.500 12 18 18.500 12 18.500 2.500 12 2.500 12z"/><circle cx="12" cy="12" r="3"/>',
+    gauge: '<path d="M4.500 17a8.500 8.500 0 1 1 15 0"/><path d="M12 13l3.500-4.500"/><path d="M12 13h.01"/>',
+    // Paket 5 (bu projede çizilmiş özgün çizgi ikonlar)
+    dog: '<circle cx="6.5" cy="9.5" r="1.7"/><circle cx="10.2" cy="5.8" r="1.7"/><circle cx="15" cy="5.8" r="1.7"/><circle cx="18.600" cy="9.500" r="1.7"/><path d="M12.500 11c-3.200 0-5.300 3.300-4.500 5.800.6 1.800 2.200 2 4.500 2s3.900-.2 4.500-2c.8-2.500-1.300-5.800-4.500-5.800z"/>',
+    dumbbell: '<path d="M7 7v10M17 7v10M4 9.500v5M20 9.500v5M7 12h10"/>',
+    window: '<rect x="4.500" y="3.500" width="15" height="17" rx="1.500"/><path d="M12 3.500v17M4.500 12h15"/>',
+    camera: '<path d="M4 8h3l1.600-2.500h6.800L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.500"/>',
+    car: '<path d="M5 16.500V12l1.800-4.500a1.500 1.500 0 0 1 1.400-1h7.600a1.500 1.500 0 0 1 1.400 1L19 12v4.500"/><path d="M3.500 16.500h17M5 12h14M7.500 16.500v2.200M16.500 16.500v2.200M7.800 14.300h.01M16.200 14.300h.01"/>',
+    // Paket 6 (bu projede çizilmiş özgün çizgi ikonlar)
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    locate: '<circle cx="12" cy="12" r="3.200"/><circle cx="12" cy="12" r="7.500"/><path d="M12 2.500v3M12 18.500v3M2.500 12h3M18.500 12h3"/>'
   };
   function uiIcon(name, size, extraClass) {
     return '<svg class="ui' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 24 24" width="' + size + '" height="' + size +

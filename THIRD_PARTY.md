@@ -14,7 +14,7 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 ## Ürettiğimiz kod
 - `icons.js`: hava ve arayüz ikonları bu proje için çizilmiş özgün SVG'lerdir. (Planlanan: [Meteocons](https://github.com/basmilius/meteocons), MIT. Eklenirse lisans metni bu klasöre konacak.)
 - `insights.js`: günlük özet, aktivite önerileri, hava kalitesi sınıfları. Kural tabanlı JavaScript; dış servis çağırmaz.
-- `mapview.js`, `sw.js`: harita/radar arayüzü ve yalnızca radar karoları için önbellek. Üçüncü taraf kod kopyalanmadı.
+- `mapview.js`, `maplayers.js`: tam ekran harita, radar ve noktasal hava katmanları arayüzü. `sw.js`: yalnızca bu sitenin kendi dosyaları için önbellek. Üçüncü taraf kod kopyalanmadı.
 - GitHub projelerinden (julianverse-weather dahil) hiçbir kod kopyalanmadı.
 
 ## Aşama 3 (PWA)
@@ -33,6 +33,9 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 - **Doğrulama:** Çayeli ve Akçakoca merkez koordinatları Open-Meteo geocoder'ıyla karşılaştırıldı (fark ≈ 200 m); her ilçenin ilinden uzaklığı makul sınırlar içinde.
 - **Üretim:** `node tools/build_locations.mjs admin-tr.csv locations-tr.json` (yalnızca il/ilçe/lat/lon alınır, Türkçe alfabe sırası). Arama çubuğu da bu veriyi kullanır (Türkiye il/ilçe yerelden, dünya Open-Meteo geocoder). Mahalle ve köy alınmaz.
 - `places.js`: seçim paneli (bu projede yazıldı; üçüncü taraf kod yok). İlk kullanımda yüklenir.
+
+## Gelişmiş veri modülleri (hazırlık; arayüzde kapalı)
+- `advanced/`: Open-Meteo Ensemble, Flood, Climate, Seasonal, Marine ve Air Quality API'leri için bayrakla kapalı altyapı. Bu sürümde hiçbir kod bu modülleri yüklemez ve ağ isteği yapmaz. Ayrıntı ve kaynak tablosu: `advanced/README.md`. Ticari/herkese açık kullanımda Open-Meteo plan ve lisans koşulları ayrıca denetlenmelidir.
 
 ## Marka (EYRIVO)
 - **Sembol:** 3 eğik bant; bu projede çizilmiş özgün, düz çokgenlerden oluşan bir çalışmadır. Başka bir logodan kopyalanmadı. Kaynak SVG'ler `brand/` klasöründedir; PNG ikonlar ve iPhone açılış görselleri `python3 tools/make_brand.py` ile üretilir.

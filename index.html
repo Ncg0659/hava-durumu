@@ -26,6 +26,7 @@
 <link rel="apple-touch-startup-image" href="icons/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="icons/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <!--pwa-end-->
+<!--nopwa--><link rel="icon" href="data:,"><!--/nopwa-->
 <title>EYRIVO</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -34,7 +35,7 @@
 <script>
 /* Açılışta beyaz/boş ekran olmasın: son temanın rengi ilk boyamadan önce uygulanır */
 (function () { document.documentElement.className = 'boot'; try { var n = localStorage.getItem('hd2:themeName'), c = localStorage.getItem('hd2:themeColor');
-  if (n) document.getElementById('splash').setAttribute('data-theme', n);
+  if (n) { document.getElementById('splash').setAttribute('data-theme', n); document.documentElement.setAttribute('data-sky', n); }
   if (c) document.querySelector('meta[name="theme-color"]').setAttribute('content', c); } catch (e) {} })();
 </script>
 <div id="sky" aria-hidden="true">
@@ -56,7 +57,8 @@
     <div class="top-row">
       <form class="search" id="search" role="search" autocomplete="off">
         <span id="searchIcon" aria-hidden="true"></span>
-        <input id="q" type="search" placeholder="Şehir ara" aria-label="Şehir ara" enterkeyhint="search"
+        <input id="q" type="search" name="eyrivo-arama" placeholder="Şehir ara" aria-label="Şehir ara" enterkeyhint="search" inputmode="search"
+               autocomplete="off" autocorrect="off"
                role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list" autocapitalize="words" spellcheck="false">
       </form>
       <button type="button" class="loc-btn" id="locBtn" aria-label="Türkiye için il ve ilçe seç" aria-haspopup="dialog"></button>
@@ -84,6 +86,22 @@
   </section>
 </div>
 
+<div class="sheet-wrap" id="hrSheet" hidden>
+  <div class="sheet-bg"></div>
+  <section class="sheet hrs" role="dialog" aria-modal="true" aria-labelledby="hrTitle">
+    <div class="sheet-grip" id="hrGrip" aria-hidden="true"><i></i></div>
+    <div id="hrBody"></div>
+  </section>
+</div>
+
+<div class="sheet-wrap" id="dtSheet" hidden>
+  <div class="sheet-bg"></div>
+  <section class="sheet dts" role="dialog" aria-modal="true" aria-labelledby="dtTitle">
+    <div class="sheet-grip" id="dtGrip" aria-hidden="true"><i></i></div>
+    <div id="dtRoot"></div>
+  </section>
+</div>
+
 <div class="sheet-wrap" id="locSheet" hidden>
   <div class="sheet-bg"></div>
   <section class="sheet loc" role="dialog" aria-modal="true" aria-labelledby="locTitle">
@@ -93,7 +111,13 @@
 </div>
 
 <script src="icons.js"></script>
+<script src="eaqi.js"></script>
 <script src="insights.js"></script>
+<script src="meteo.js"></script>
+<script src="advice.js"></script>
+<script src="hourly.js"></script>
+<script src="detailcalc.js"></script>
+<script src="detail.js"></script>
 <script src="app.js"></script>
 <script src="config.js"></script>
 <script src="notify.js"></script>

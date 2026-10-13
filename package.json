@@ -1,0 +1,11 @@
+{
+  "name": "eyrivo",
+  "version": "0.7.0",
+  "private": true,
+  "description": "EYRIVO: ücretsiz, reklamsız hava durumu PWA'sı (bağımlılık yok; yalnızca Node ile derlenir).",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "build:worker": "node worker/build.mjs",
+    "test": "cd worker && node --test test/*.test.mjs"
+  }
+}

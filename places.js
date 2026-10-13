@@ -128,6 +128,7 @@
   function reduced() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
   function open(opener) {
     return load().then(function () {
+      document.dispatchEvent(new CustomEvent('hd2:sheet', { detail: 'loc' }));   // aynı anda tek alt panel
       S.opener = opener || null;
       var cur = window.HD.current(), pi = -1, di = -1;
       if (cur && cur.prov) { pi = provIndex(cur.prov); if (pi >= 0) di = distIndex(pi, cur.dist); }
@@ -145,6 +146,7 @@
       }
     });
   }
+  document.addEventListener('hd2:sheet', function (e) { if (e.detail !== 'loc') close(true); });
   function close(noFocus) {
     if (wrap.hidden) return;
     wrap.classList.remove('open');

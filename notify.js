@@ -27,6 +27,7 @@
     ['UV', 'yalnızca "aşırı" (11+); 8–10 arası uygulama içinde kalır']
   ];
 
+  var DIAG = /[?&]diag(&|=|$)/.test(location.search);   // yalnızca adrese ?diag eklenirse görünür; normal kullanımda arayüz değişmez
   var st = { on: false, busy: false, msg: '', cities: [] };
 
   function cities() {
@@ -61,7 +62,8 @@
       '<details class="nt-more"><summary>Bildirim türleri</summary><ul>' +
       TYPES.map(function (t) { return '<li><b>' + t[0] + '</b><span>' + t[1] + '</span></li>'; }).join('') +
       '</ul><p class="nt-d">Gün doğumu/batımı, sabah-akşam özeti ve sıradan değişiklikler için bildirim gönderilmez. Aynı olay için bir kez, günde en fazla 4; 23:00–07:00 arası yalnızca ciddi fırtına, çok kuvvetli yağış, tehlikeli rüzgâr ve ciddi buzlanma.</p>' +
-      (st.on ? '<button type="button" class="btn ghost" id="ntTest">Deneme bildirimi gönder</button>' : '') + '</details>';
+      (st.on ? '<button type="button" class="btn ghost" id="ntTest">Deneme bildirimi gönder</button>' : '') +
+      (DIAG && st.on ? ' <button type="button" class="btn ghost" id="ntDiag">Konum eşitleme tanılaması</button><pre class="nt-diag" id="ntDiagOut" hidden></pre>' : '') + '</details>';
     card.hidden = false;
   }
   function say(m) { st.msg = m || ''; var n = document.getElementById('ntMsg'); if (n) { n.textContent = st.msg; n.hidden = !st.msg; } }
@@ -106,8 +108,29 @@
     });
   }
 
+  // Tanılama (salt okunur): cihazın gönderdiği ilk 3 konum ile Worker'da kayıtlı konumları yan yana gösterir. Bildirim göndermez.
+  function diag() {
+    var out = document.getElementById('ntDiagOut'); if (!out) return;
+    function line(c) { return c.name + ' · ' + (c.province ? c.province + ' / ' + c.district : 'il/ilçe yok') + ' · ' + c.lat + ', ' + c.lon; }
+    var r2 = function (x) { return Math.round(x * 100) / 100; };
+    out.hidden = false; out.textContent = 'Sunucudan okunuyor…';
+    navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+      if (!sub) throw new Error('abonelik yok');
+      return api('/diag', { endpoint: sub.endpoint });
+    }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function (j) {
+      var dev = cities(), t = ['Cihaz (ilk 3 favori, yoksa son şehir):'];
+      dev.forEach(function (c, i) { t.push((i + 1) + '. ' + line({ name: c.name, province: c.province, district: c.district, lat: r2(c.lat), lon: r2(c.lon) })); });
+      t.push('', 'Worker\'da kayıtlı (izlenen):');
+      j.watched.forEach(function (c, i) { t.push((i + 1) + '. ' + line(c)); });
+      var same = dev.length === j.watched.length && dev.every(function (c, i) { var w = j.watched[i]; return w.name === c.name && w.lat === r2(c.lat) && w.lon === r2(c.lon) && (w.province || null) === (c.province || null) && (w.district || null) === (c.district || null); });
+      t.push('', same ? 'Sonuç: eşleşiyor ✓' : 'Sonuç: FARK VAR — favorileri bir kez değiştirip geri alın veya bildirim anahtarını kapatıp açın.', 'Saat dilimi: ' + j.tz + ' · son eşitleme: ' + new Date(j.updated).toLocaleString('tr-TR'));
+      out.textContent = t.join('\n');
+    }).catch(function () { out.textContent = 'Tanılama okunamadı (sunucuya ulaşılamadı veya kayıt yok).'; });
+  }
+
   card.addEventListener('click', function (e) {
     if (e.target.closest('#ntSwitch')) { st.on ? disable() : enable(); return; }
+    if (e.target.closest('#ntDiag')) { diag(); return; }
     if (e.target.closest('#ntTest')) {
       var b = e.target.closest('#ntTest'); b.disabled = true;
       navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {

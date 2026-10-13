@@ -1,0 +1,11 @@
+# İsteğe bağlı (komut satırı kullanırsan). Panelden kurulumda gerekmez.
+name = "hava-uyari"
+main = "dist/worker.js"
+compatibility_date = "2026-01-01"
+[triggers]
+crons = ["*/30 * * * *"]
+[vars]
+ALLOWED_ORIGIN = "https://KULLANICIADIN.github.io"
+[[kv_namespaces]]
+binding = "KV"
+id = "BURAYA_KV_ID"

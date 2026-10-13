@@ -1,7 +1,7 @@
 /* EYRIVO: servis çalışanı (yalnızca https/localhost'ta çalışır).
 
    NE ÖNBELLEKLENİR: yalnızca bu sitenin kendi dosyaları (HTML, CSS, JS, ikonlar, manifest; harita dosyaları
-   MapLibre + mapview.js ilk kullanımda). Böylece uygulama arayüzü çevrimdışıyken de açılır.
+   MapLibre + mapview.js + maplayers.js ilk kullanımda). Böylece uygulama arayüzü çevrimdışıyken de açılır.
 
    NE ÖNBELLEKLENMEZ (özellikle): başka bir siteye giden hiçbir istek bu dosyadan geçmez; yani
    OpenFreeMap karoları/stili, OpenStreetMap, RainViewer radar, Open-Meteo / hava kalitesi / şehir arama
@@ -11,13 +11,13 @@
    değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
    Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
 'use strict';
-var BUILD = '40b7590c';
+var BUILD = '__BUILD__';
 var PREFIX = 'hd2-shell-';
 var CACHE = PREFIX + BUILD;
-var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'insights.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest',
+var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png', 'icons/favicon-32.png', 'icons/favicon-64.png', 'icons/badge-96.png'];
-var LAZY = /\/(vendor\/maplibre\/[^/]+|mapview\.js)$/;   // ilk kullanımda önbelleğe girer
+var LAZY = /\/(vendor\/maplibre\/[^/]+|mapview\.js|maplayers\.js|advanced\.js)$/;   // ilk kullanımda önbelleğe girer
 
 function scopeUrl(p) { return new URL(p, self.registration.scope).href; }
 

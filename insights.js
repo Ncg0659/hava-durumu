@@ -3,6 +3,7 @@
    Saf fonksiyonlar: DOM'a dokunmaz. */
 'use strict';
 (function (global) {
+  var EAQI = global.EAQI || (typeof require === 'function' ? require('./eaqi.js') : null);   // hava kalitesi sınıfları tek yerde: eaqi.js
   function r(n) { var x = Math.round(n); return x === 0 ? 0 : x; }
   function dg(n) { var x = r(n); return (x < 0 ? '\u2212' + (-x) : x) + '°'; }
   function hh(s) { return +s.slice(11, 13); }
@@ -17,7 +18,7 @@
   function codePrecip(c) { return codeWet(c) || codeSnow(c) || codeStorm(c); }
 
   // ---------- Hava kalitesi (Avrupa Hava Kalitesi Endeksi, EEA 2024 sınıfları) ----------
-  var AQ_LABEL = ['Çok iyi', 'İyi', 'Orta', 'Kötü', 'Çok kötü', 'Aşırı kötü'];
+  var AQ_LABEL = EAQI.LABEL;
   var AQ_COLOR = ['#4fe3d8', '#5ad28f', '#f0d94a', '#ff6b5e', '#c2335f', '#9b4fc0'];
   var AQ_SENTENCE = [
     'Hava çok temiz; dışarıda vakit geçirmek için çok uygun.',
@@ -40,7 +41,7 @@
     ['alder_pollen', 'Kızılağaç'], ['birch_pollen', 'Huş'], ['grass_pollen', 'Çimen'],
     ['mugwort_pollen', 'Pelin otu'], ['olive_pollen', 'Zeytin'], ['ragweed_pollen', 'Ambrozya']
   ];
-  function eaqiLevel(v) { return v < 20 ? 0 : v < 40 ? 1 : v < 60 ? 2 : v < 80 ? 3 : v < 100 ? 4 : 5; }
+  var eaqiLevel = EAQI.level;
   function pollLevel(th, v) { var k = 0; while (k < th.length && v >= th[k]) k++; return k; }
 
   // cur: Open-Meteo air-quality "current" nesnesi. Veri yoksa null döner.
@@ -186,7 +187,7 @@
 
   // ---------- Aktivite önerileri ----------
   var LEVEL = ['Uygun', 'İdare eder', 'Uygun değil'];
-  // x: { feels, wind, p (yağış ihtimali, sonraki 3 saat), wet, snow, storm, ice, isDay, uv, aqi (EAQI düzeyi 0-5 | null) }
+  // x: { feels, wind, p (yağış ihtimali, sonraki 3 saat), wet, snow, storm, ice, isDay, uv, aqi (EAQI değeri | null) }
   function worst(parts) {
     var best = [0, ''], i; for (i = 0; i < parts.length; i++) if (parts[i][0] > best[0]) best = parts[i];
     return best;
@@ -203,28 +204,55 @@
     if (x.p >= l1) return [1, 'Yağış ihtimali %' + r(x.p)];
     return [0, ''];
   }
-  function windPart(x, l1, l2) { return x.wind >= l2 ? [2, 'Rüzgâr kuvvetli'] : x.wind >= l1 ? [1, 'Rüzgâr var'] : [0, '']; }
+  // x.gust (km/sa, varsa): hamle ortalama rüzgârın yaklaşık 1,5 katıdır; eşikler ortalama rüzgâra göre verildiği için aynı oranla çarpılır
+  var GUST_RATIO = 1.5;
+  function windPart(x, l1, l2) {
+    if (x.wind >= l2) return [2, 'Rüzgâr kuvvetli'];
+    if (typeof x.gust === 'number' && x.gust >= l2 * GUST_RATIO) return [2, 'Rüzgâr hamleleri güçlü'];
+    if (x.wind >= l1) return [1, 'Rüzgâr var'];
+    if (typeof x.gust === 'number' && x.gust >= l1 * GUST_RATIO) return [1, 'Rüzgâr hamleleri var'];
+    return [0, ''];
+  }
+  // x.vis (m, varsa): düşük görüşte dışarıda vakit geçirmek de zorlaşır
+  function visPart(x) {
+    if (typeof x.vis !== 'number') return [0, ''];
+    return x.vis < 1000 ? [2, 'Görüş çok düşük'] : x.vis < 4000 ? [1, 'Görüş azalmış'] : [0, ''];
+  }
+  // x.stormLvl / x.hailLvl (0 Düşük · 1 Orta · 2 Yüksek, METEO'dan): kesin kod (x.storm) zaten rainPart'ta
+  function riskPart(x) {
+    if (x.stormLvl >= 2) return [2, 'Fırtına riski yüksek'];
+    if (x.hailLvl >= 2) return [2, 'Dolu riski yüksek'];
+    if (x.stormLvl === 1) return [1, 'Fırtına riski artmış'];
+    if (x.hailLvl === 1) return [1, 'Dolu ihtimali var'];
+    return [0, ''];
+  }
   function aqPart(x, l1, l2) {
     if (x.aqi == null) return [0, ''];
-    return x.aqi >= l2 ? [2, 'Hava kalitesi kötü'] : x.aqi >= l1 ? [1, 'Hava kalitesi orta'] : [0, ''];
+    var w = 'Hava kalitesi ' + EAQI.labelLower(x.aqi);   // etiket gerçek EAQI sınıfından gelir (60 = "kötü"); l1/l2 yalnızca etkinliğe özgü hassasiyet eşiği
+    return x.aqi >= l2 ? [2, w] : x.aqi >= l1 ? [1, w] : [0, ''];
   }
-  function activities(x) {
+  // Beş temel etkinliği değerlendirir (sıralamadan). x'te vis / gust / stormLvl / hailLvl yoksa eski davranış aynen korunur.
+  function rateAll(x) {
+    var extra = [visPart(x), riskPart(x)];
     var defs = [
       { id: 'coffee', name: 'Kahve / dışarıda oturma', short: 'Dışarıda kahve', icon: 'coffee', ok: 'Keyifli bir hava',
-        parts: [tband(x.feels, 8, 15, 29, 34), rainPart(x, 25, 50), windPart(x, 20, 32), aqPart(x, 60, 80), x.uv >= 8 && x.isDay ? [1, 'UV çok yüksek'] : [0, '']] },
+        parts: [tband(x.feels, 8, 15, 29, 34), rainPart(x, 25, 50), windPart(x, 20, 32), aqPart(x, 60, 80), x.uv >= 8 && x.isDay ? [1, 'UV çok yüksek'] : [0, '']].concat(extra) },
       { id: 'walk', name: 'Yürüyüş', short: 'Yürüyüş', icon: 'walk', ok: 'Yürümek için güzel',
-        parts: [tband(x.feels, -2, 6, 28, 33), rainPart(x, 30, 60), windPart(x, 32, 48), aqPart(x, 60, 80), x.ice ? [1, 'Buzlanma riski'] : [0, ''], x.uv >= 8 && x.isDay ? [1, 'UV çok yüksek'] : [0, '']] },
+        parts: [tband(x.feels, -2, 6, 28, 33), rainPart(x, 30, 60), windPart(x, 32, 48), aqPart(x, 60, 80), x.ice ? [1, 'Buzlanma riski'] : [0, ''], x.uv >= 8 && x.isDay ? [1, 'UV çok yüksek'] : [0, '']].concat(extra) },
       { id: 'bike', name: 'Bisiklet', short: 'Bisiklet', icon: 'bike', ok: 'Rüzgâr ve sıcaklık uygun',
-        parts: [tband(x.feels, 2, 9, 28, 33), rainPart(x, 25, 50), windPart(x, 22, 32), aqPart(x, 60, 80), x.ice ? [2, 'Buzlanma riski'] : [0, ''], !x.isDay ? [1, 'Hava karanlık'] : [0, '']] },
+        parts: [tband(x.feels, 2, 9, 28, 33), rainPart(x, 25, 50), windPart(x, 22, 32), aqPart(x, 60, 80), x.ice ? [2, 'Buzlanma riski'] : [0, ''], !x.isDay ? [1, 'Hava karanlık'] : [0, '']].concat(extra) },
       { id: 'run', name: 'Koşu', short: 'Koşu', icon: 'run', ok: 'Koşu için rahat hava',
-        parts: [tband(x.feels, -4, 3, 22, 29), rainPart(x, 35, 60), windPart(x, 35, 50), aqPart(x, 40, 60), x.ice ? [1, 'Buzlanma riski'] : [0, ''], !x.isDay ? [1, 'Hava karanlık'] : [0, '']] },
+        parts: [tband(x.feels, -4, 3, 22, 29), rainPart(x, 35, 60), windPart(x, 35, 50), aqPart(x, 40, 60), x.ice ? [1, 'Buzlanma riski'] : [0, ''], !x.isDay ? [1, 'Hava karanlık'] : [0, '']].concat(extra) },
       { id: 'picnic', name: 'Piknik', short: 'Piknik', icon: 'basket', ok: 'Piknik havası',
-        parts: [tband(x.feels, 12, 18, 29, 33), rainPart(x, 20, 40), windPart(x, 20, 30), aqPart(x, 60, 80), !x.isDay ? [2, 'Gece'] : [0, ''], x.uv >= 8 ? [1, 'UV çok yüksek'] : [0, '']] }
+        parts: [tband(x.feels, 12, 18, 29, 33), rainPart(x, 20, 40), windPart(x, 20, 30), aqPart(x, 60, 80), !x.isDay ? [2, 'Gece'] : [0, ''], x.uv >= 8 ? [1, 'UV çok yüksek'] : [0, '']].concat(extra) }
     ];
-    var list = defs.map(function (d, i) {
+    return defs.map(function (d, i) {
       var w = worst(d.parts);
       return { id: d.id, name: d.short, icon: d.icon, lvl: w[0], label: LEVEL[w[0]], why: w[0] ? w[1] : d.ok, order: i };
     });
+  }
+  function activities(x) {
+    var list = rateAll(x);
     list.sort(function (p, q) { return p.lvl - q.lvl || p.order - q.order; });
     var best = list[0].lvl, home = { id: 'home', name: 'Evde kal', icon: 'home', lvl: 0, label: 'Önerilir', why: x.storm ? 'Fırtına var' : 'Dışarısı pek elverişli değil', order: 9 };
     var pick = list.slice(0, 3);
@@ -237,6 +265,7 @@
   global.Insights = {
     dg: dg,
     airQuality: airQuality, daySummary: daySummary, activities: activities,
+    rateAll: rateAll, parts: { worst: worst, tband: tband, rainPart: rainPart, windPart: windPart, aqPart: aqPart, visPart: visPart, riskPart: riskPart },
     AQ_LABEL: AQ_LABEL, AQ_COLOR: AQ_COLOR, LEVEL: LEVEL, eaqiLevel: eaqiLevel,
     codeWet: codeWet, codeSnow: codeSnow, codeStorm: codeStorm, codePrecip: codePrecip, tempWord: tempWord
   };
