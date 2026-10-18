@@ -60,7 +60,7 @@ Hepsi tek yerde: `worker/src/rules.js` → `T`. İstersen sayıları oradan değ
 1. **Olay kimliği:** `tür | yerel tarih | günün 6 saatlik dilimi` (örn. `storm:2026-10-07:2`). Aynı kimlik bir kez gider.
 2. **Bekleme süresi (tür başına, şehir başına):** fırtına/yağış/rüzgâr 6 sa · don 12 sa · hava kalitesi 12 sa · sıcak/soğuk 20 sa · UV 72 sa. Tahmin saati kayarsa aynı olay yeniden gönderilmez.
 3. **Birleştirme:** fırtına varsa aynı şehirde kuvvetli yağış ayrıca gönderilmez.
-4. **Günlük sınır:** bir cihaza günde en fazla **4** bildirim (öncelik: fırtına > rüzgâr > yağış > don > sıcak > soğuk > hava kalitesi > UV).
+4. **Günlük sınır:** bir cihaza günde en fazla **5** bildirim (öncelik: fırtına > rüzgâr > yağış > don > sıcak > soğuk > hava kalitesi > UV).
 5. **Sessiz saatler:** 23:00–07:00 (cihazın saat dilimi). Gece YALNIZCA şu 4 tür geçebilir ve yalnızca önümüzdeki 3 saat içindeyse: **ciddi fırtına** (dolu kodu 96/99 veya ihtimal ≥ %60), **çok kuvvetli yağış** (≥ 15 mm/sa ya da 3 saatte ≥ 35 mm; kar ≥ 4 cm/sa), **tehlikeli rüzgâr** (hamle/rüzgâr ≥ 90 km/sa), **ciddi buzlanma** (dondurucu yağmur, ihtimal ≥ %50). **UV, hava kalitesi, sıcak, soğuk geceleri asla gönderilmez** (kodda ayrıca engellenir). Gece ertelenen olay hâlâ sürüyorsa 07:00'den sonra TEK kez gider.
 6. Olay bitip **yeni bir ciddi olay** oluşursa (bekleme süresi dolduktan sonra) yeniden bildirim gider.
 

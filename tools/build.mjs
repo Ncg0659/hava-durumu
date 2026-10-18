@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.7.0';   // EYRIVO sürümü (alt çizgideki BUILD, dosya içeriğinden hesaplanan özet)
+const VERSION = '0.7.1';   // EYRIVO sürümü (alt çizgideki BUILD, dosya içeriğinden hesaplanan özet)
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => readFileSync(join(root, f), 'utf8');
 const blob = (id, txt) => {
@@ -19,10 +19,10 @@ const walk = (d) => readdirSync(join(root, d)).sort().flatMap((n) => {
   const p = d + '/' + n; return statSync(join(root, p)).isDirectory() ? walk(p) : [p];
 });
 
-const SHELL = ['index.html', 'style.css', 'app.js', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'pwa.js', 'notify.js', 'maplayers.js', 'mapview.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest', 'THIRD_PARTY.md'];
+const SHELL = ['index.html', 'style.css', 'app.js', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'daily.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'pwa.js', 'notify.js', 'maplayers.js', 'mapview.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest', 'THIRD_PARTY.md'];
 // Gelişmiş veri modülleri (Paket 7): kaynakta ayrı dosyalar, yayında tek lazy paket (advanced.js). Uygulama açılışında yüklenmez.
 const ADV = ['config', 'core', 'capability', 'ensemble', 'flood', 'climate', 'seasonal', 'marine', 'airquality', 'index'].map((n) => `advanced/${n}.js`);
-const ASSETS = [...walk('icons'), ...walk('vendor/maplibre')];
+const ASSETS = [...walk('icons'), ...walk('vendor/maplibre'), ...walk('mah')];   // mah/*.json: il bazlı mahalle verisi (tembel; önbelleğe ilk kullanımda girer)
 const hash = createHash('sha1');
 for (const f of [...SHELL, ...ADV, ...ASSETS, 'sw.js']) { hash.update(f); hash.update(readFileSync(join(root, f))); }
 const BUILD = hash.digest('hex').slice(0, 8);
@@ -34,10 +34,11 @@ const site = join(root, 'dist', 'site');
 rmSync(site, { recursive: true, force: true });
 mkdirSync(join(site, 'vendor', 'maplibre'), { recursive: true });
 mkdirSync(join(site, 'icons', 'splash'), { recursive: true });
+mkdirSync(join(site, 'mah'), { recursive: true });
 writeFileSync(join(site, '.nojekyll'), '');
 let siteHtml = read('index.html').replace(/<!--nopwa-->[\s\S]*?<!--\/nopwa-->\n?/, '');
 writeFileSync(join(site, 'index.html'), siteHtml);
-for (const f of ['style.css', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'app.js', 'notify.js', 'maplayers.js', 'mapview.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest', 'THIRD_PARTY.md']) copyFileSync(join(root, f), join(site, f));
+for (const f of ['style.css', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'daily.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'app.js', 'notify.js', 'maplayers.js', 'mapview.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest', 'THIRD_PARTY.md']) copyFileSync(join(root, f), join(site, f));
 copyFileSync(join(root, 'config.js'), join(site, 'config.js'));   // sürüm özetine girmez: sonradan elle düzenlenir
 mkdirSync(join(site, 'licenses'), { recursive: true });
 copyFileSync(join(root, 'licenses', 'ODbL-1.0.txt'), join(site, 'licenses', 'ODbL-1.0.txt'));
@@ -57,6 +58,7 @@ swap('<script src="eaqi.js"></script>', `<script>\n${read('eaqi.js')}\n</script>
 swap('<script src="insights.js"></script>', `<script>\n${read('insights.js')}\n</script>`);
 swap('<script src="meteo.js"></script>', `<script>\n${read('meteo.js')}\n</script>`);
 swap('<script src="advice.js"></script>', `<script>\n${read('advice.js')}\n</script>`);
+swap('<script src="daily.js"></script>', `<script>\n${read('daily.js')}\n</script>`);
 swap('<script src="hourly.js"></script>', `<script>\n${read('hourly.js')}\n</script>`);
 swap('<script src="detailcalc.js"></script>', `<script>\n${read('detailcalc.js')}\n</script>`);
 swap('<script src="detail.js"></script>', `<script>\n${read('detail.js')}\n</script>`);

@@ -99,12 +99,12 @@ test('sessiz saat: 23:00–07:00 arası acil olmayanlar bekler, acil olanlar ge�
   const morning = Date.parse('2026-10-07T04:10:00Z');  // 07:10
   sel = selectNotifications(mkSub(), pc([E('heat', 'heat:2026-10-07')]), morning); assert.equal(sel.send.length, 1);
 });
-test('günlük sınır 4, öncelik sırasıyla', () => {
+test('günlük sınır 5, öncelik sırasıyla', () => {
   const all = ['uv', 'aqi', 'cold', 'heat', 'frost', 'precip', 'wind', 'storm'].map((t) => E(t, t + ':2026-10-07:1'));
   const sel = selectNotifications(mkSub(), pc(all), NOW);
-  assert.deepEqual(sel.send.map((x) => x.type), ['storm', 'wind', 'frost', 'heat'], 'precip fırtınayla birleşir; kalan öncelik sırasıyla');
+  assert.deepEqual(sel.send.map((x) => x.type), ['storm', 'wind', 'frost', 'heat', 'cold'], 'precip fırtınayla birleşir; kalan öncelik sırasıyla (günlük sınır 5)');
   assert.ok(sel.skipped.every((s) => s.why === 'günlük-sınır'));
-  const sub2 = apply(mkSub(), sel), sel2 = selectNotifications(sub2, pc(all), NOW + 3600000); assert.equal(sel2.send.length, 0, 'aynı gün 4 doldu');
+  const sub2 = apply(mkSub(), sel), sel2 = selectNotifications(sub2, pc(all), NOW + 3600000); assert.equal(sel2.send.length, 0, 'aynı gün 5 doldu');
   const next = selectNotifications(sub2, pc([E('heat', 'heat:2026-10-08')]), NOW + 24 * 3600000); assert.equal(next.send.length, 1, 'ertesi gün sayaç sıfırlanır');
 });
 test('fırtına varken aynı şehirde kuvvetli yağış ayrıca gönderilmez', () => {

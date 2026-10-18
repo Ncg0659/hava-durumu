@@ -282,7 +282,7 @@ const T = {
   frost:  { wetMm: 0.3, wetBackH: 6, tempC: 0, fogC: -1, freezingCodes: [56, 57, 66, 67], freezingProb: 30, fogCode: 48, horizonH: 12 },
   cooldownH: { storm: 6, precip: 6, wind: 6, frost: 12, aqi: 12, heat: 20, cold: 20, uv: 72 },
   priority: ['storm', 'wind', 'precip', 'frost', 'heat', 'cold', 'aqi', 'uv'],
-  dailyCap: 4,
+  dailyCap: 5,
   quiet: { from: 23, to: 7 },
   maxPushPerRun: 20
 };

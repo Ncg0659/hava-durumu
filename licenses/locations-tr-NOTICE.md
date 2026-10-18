@@ -12,3 +12,6 @@
 - **Bizim işlememiz:** `tools/build_locations.mjs` ile il adı + il merkezi, ilçe adı + ilçe merkezi enlem/boylamı (3 ondalık) alındı;
   Türkçe alfabe sırasına dizildi. Mahalle/köy, alternatif adlar ve yarıçap alınmadı. 81 il, 973 ilçe.
 - **ODbL gereği:** bu dosya türev veri tabanıdır; aynı lisansla (ODbL 1.0) ve bu atıfla paylaşılır. Uygulamanın geri kalan kodu bu lisansa tabi değildir.
+
+## 0.7.1 — mah/*.json
+`mah/<il>.json` dosyaları (13.793 mahalle adı + merkez enlem/boylam, 4 ondalık) aynı kaynaktan ve aynı lisansla (ODbL 1.0) türetilmiştir; yalnızca `level=mahalle` satırları alınmıştır (`tools/build_mahalle.mjs`). Aynı atıf ve paylaşım koşulları geçerlidir.
