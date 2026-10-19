@@ -36,7 +36,7 @@
     if (!out.length) { try { var l = JSON.parse(ls('hd2:last') || 'null'); if (l) out = [l]; } catch (e) { /* yok */ } }
     return out.filter(function (c) { return c && isFinite(c.lat) && isFinite(c.lon) && c.name; }).map(function (c) {
       var o = { name: c.name, lat: c.lat, lon: c.lon };
-      if (c.dist && c.prov) { o.province = c.prov; o.district = c.dist; if (c.dup) o.name = c.name + ' (' + c.prov + ')'; }   // il/ilçe seçimi; aynı adlı ilçede bildirimde il adı da görünür
+      if (c.dist && c.prov) { o.province = c.prov; o.district = c.dist; if (c.mah) o.name = c.name + ', ' + c.dist; else if (c.dup) o.name = c.name + ' (' + c.prov + ')'; }   // il/ilçe seçimi; aynı adlı ilçede bildirimde il adı da görünür
       return o;
     });
   }
@@ -61,7 +61,7 @@
       '<p class="nt-m" id="ntMsg" role="status" aria-live="polite"' + (st.msg ? '' : ' hidden') + '>' + esc(st.msg) + '</p>' +
       '<details class="nt-more"><summary>Bildirim türleri</summary><ul>' +
       TYPES.map(function (t) { return '<li><b>' + t[0] + '</b><span>' + t[1] + '</span></li>'; }).join('') +
-      '</ul><p class="nt-d">Gün doğumu/batımı, sabah-akşam özeti ve sıradan değişiklikler için bildirim gönderilmez. Aynı olay için bir kez, günde en fazla 4; 23:00–07:00 arası yalnızca ciddi fırtına, çok kuvvetli yağış, tehlikeli rüzgâr ve ciddi buzlanma.</p>' +
+      '</ul><p class="nt-d">Gün doğumu/batımı, sabah-akşam özeti ve sıradan değişiklikler için bildirim gönderilmez. Aynı olay için bir kez, günde en fazla 5; 23:00–07:00 arası yalnızca ciddi fırtına, çok kuvvetli yağış, tehlikeli rüzgâr ve ciddi buzlanma.</p>' +
       (st.on ? '<button type="button" class="btn ghost" id="ntTest">Deneme bildirimi gönder</button>' : '') +
       (DIAG && st.on ? ' <button type="button" class="btn ghost" id="ntDiag">Konum eşitleme tanılaması</button><pre class="nt-diag" id="ntDiagOut" hidden></pre>' : '') + '</details>';
     card.hidden = false;

@@ -112,13 +112,13 @@
   // ---------- Grafik ----------
   function chartSpec(tab, h, a, b) {
     var s = C.state.start, from = a, S = function (key, f) { var o = []; for (var i = f; i <= b; i++) o.push(M.at(h[key], i)); return o; };
-    if (tab === 'temp') return { from: from, unit: '°', lines: [{ vals: S('temperature_2m', from), color: COL.temp, w: 2.6 }, { vals: S('apparent_temperature', from), color: COL.feels, w: 1.8, dash: '4 4' }], bars: [], minSpan: 4, fmt: function (v) { return C.deg(v); },
+    if (tab === 'temp') return { from: from, unit: '°', lines: [{ vals: S('temperature_2m', from), color: COL.temp, w: 1.9 }, { vals: S('apparent_temperature', from), color: COL.feels, w: 1.4, dash: '4 4' }], bars: [], minSpan: 4, fmt: function (v) { return C.deg(v); },
       cap: 'Düz çizgi sıcaklık, kesik çizgi hissedilen.' };
-    if (tab === 'rain') return { from: from, lines: [{ vals: S('precipitation_probability', from), color: COL.prob, w: 1.8, own: [0, 100] }], bars: [{ vals: S('precipitation', from), color: COL.rain }], yMin: 0, minSpan: 2, fmt: function (v) { return fmt1(v) + ' mm'; },
+    if (tab === 'rain') return { from: from, lines: [{ vals: S('precipitation_probability', from), color: COL.prob, w: 1.4, own: [0, 100] }], bars: [{ vals: S('precipitation', from), color: COL.rain }], yMin: 0, minSpan: 2, fmt: function (v) { return fmt1(v) + ' mm'; },
       cap: 'Sütunlar yağış miktarı (mm), çizgi yağış ihtimali (%).' };
-    if (tab === 'wind') return { from: from, lines: [{ vals: S('wind_speed_10m', from), color: COL.wind, w: 2.6 }, { vals: S('wind_gusts_10m', from), color: COL.gust, w: 1.8, dash: '4 4' }], bars: [], yMin: 0, minSpan: 20, fmt: function (v) { return C.round(v) + ' km/sa'; },
+    if (tab === 'wind') return { from: from, lines: [{ vals: S('wind_speed_10m', from), color: COL.wind, w: 1.9 }, { vals: S('wind_gusts_10m', from), color: COL.gust, w: 1.4, dash: '4 4' }], bars: [], yMin: 0, minSpan: 20, fmt: function (v) { return C.round(v) + ' km/sa'; },
       cap: 'Düz çizgi rüzgâr, kesik çizgi hamle (km/sa).' };
-    if (tab === 'press') { var pf = Math.max(0, s - 12); return { from: pf, now: s, lines: [{ vals: S('pressure_msl', pf), color: COL.press, w: 2.6 }], bars: [], minSpan: 6, fmt: function (v) { return C.round(v) + ' hPa'; }, cap: 'Son 12 saat ve önümüzdeki 24 saat (hPa).' }; }
+    if (tab === 'press') { var pf = Math.max(0, s - 12); return { from: pf, now: s, lines: [{ vals: S('pressure_msl', pf), color: COL.press, w: 1.9 }], bars: [], minSpan: 6, fmt: function (v) { return C.round(v) + ' hPa'; }, cap: 'Son 12 saat ve önümüzdeki 24 saat (hPa).' }; }
     if (tab === 'uv') return { from: from, lines: [], bars: [{ vals: S('uv_index', from), colorFn: function (v) { return C.UV_CLASSES[C.uvClass(v)][1]; } }], yMin: 0, minSpan: 6, fmt: function (v) { return fmt1(v); }, cap: 'UV indeksi; renk şiddeti gösterir.' };
     return null;
   }
@@ -126,6 +126,32 @@
     var sp = chartSpec(tab, h, a, b); if (!sp) return false;
     var any = false; sp.lines.concat(sp.bars).forEach(function (s) { s.vals.forEach(function (v) { if (v !== null) any = true; }); });
     return any;
+  }
+  // Çizgi yolu: ardışık noktalar monoton kübik (Fritsch–Carlson) eğriyle birleşir — noktaların kendisi değişmez, eğri aşım (taşma) yapmaz; boşluklar (null) ayrı parça olur
+  function linePath(pts) {
+    var out = '', seg = [], i;
+    function flush() {
+      var n = seg.length; if (!n) return;
+      out += 'M' + seg[0][0].toFixed(1) + ' ' + seg[0][1].toFixed(1);
+      if (n === 1) { seg = []; return; }
+      var dx = [], m = [], t = [];
+      for (i = 0; i < n - 1; i++) { dx[i] = seg[i + 1][0] - seg[i][0]; m[i] = (seg[i + 1][1] - seg[i][1]) / (dx[i] || 1); }
+      t[0] = m[0]; t[n - 1] = m[n - 2];
+      for (i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+      for (i = 0; i < n - 1; i++) {
+        if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+        var a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+        if (s > 9) { var k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+      }
+      for (i = 0; i < n - 1; i++) {
+        var h3 = dx[i] / 3;
+        out += 'C' + (seg[i][0] + h3).toFixed(1) + ' ' + (seg[i][1] + t[i] * h3).toFixed(1) + ' ' + (seg[i + 1][0] - h3).toFixed(1) + ' ' + (seg[i + 1][1] - t[i + 1] * h3).toFixed(1) + ' ' + seg[i + 1][0].toFixed(1) + ' ' + seg[i + 1][1].toFixed(1);
+      }
+      seg = [];
+    }
+    pts.forEach(function (p) { if (p === null) flush(); else seg.push(p); });
+    flush();
+    return out;
   }
   function drawChart(sp, h, sel) {
     var W = 320, H = 150, L = 38, R = 8, T = 10, B = 24, n = sp.lines.concat(sp.bars)[0].vals.length, step = (W - L - R) / n;
@@ -145,8 +171,7 @@
       bs.vals.forEach(function (v, kk) { if (v === null) return; var y = Y(Math.max(v, lo)), hh = Math.max(v > 0 ? 1.5 : 0, Y(lo) - y); g += '<rect x="' + (X(kk) - bw / 2).toFixed(1) + '" y="' + (Y(lo) - hh).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="1.5" fill="' + (bs.colorFn ? bs.colorFn(v) : bs.color) + '"/>'; });
     });
     sp.lines.forEach(function (ls) {
-      var path = '', pen = false;
-      ls.vals.forEach(function (v, kk) { if (v === null) { pen = false; return; } path += (pen ? 'L' : 'M') + X(kk).toFixed(1) + ' ' + Y(v, ls.own).toFixed(1); pen = true; });
+      var path = linePath(ls.vals.map(function (v, kk) { return v === null ? null : [X(kk), Y(v, ls.own)]; }));
       g += '<path d="' + path + '" fill="none" stroke="' + ls.color + '" stroke-width="' + ls.w + '" stroke-linecap="round" stroke-linejoin="round"' + (ls.dash ? ' stroke-dasharray="' + ls.dash + '"' : '') + '/>';
     });
     if (selK >= 0 && selK < n) { s = sp.lines[0] || sp.bars[0]; var sv = s.vals[selK]; if (sv !== null) g += '<circle cx="' + X(selK).toFixed(1) + '" cy="' + Y(sv, s.own).toFixed(1) + '" r="4.5" fill="#fff" stroke="' + (s.color || '#fff') + '" stroke-width="2"/>'; }

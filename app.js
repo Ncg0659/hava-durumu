@@ -171,24 +171,44 @@
   };
   // İl/ilçe seçilen konumlarda kimlik 'İl|İlçe' (aynı adlı ilçeler karışmaz); aramadan gelenlerde koordinat
   function cityId(c) { return c.id || (c.lat.toFixed(2) + ',' + c.lon.toFixed(2)); }
-  function favLabel(f) { return f.dup && f.admin ? f.name + ' (' + f.admin + ')' : f.name; }   // aynı adlı ilçede il adı da görünür
+  function cityTitle(c) { return c.mah && c.dist ? c.name + ', ' + c.dist : c.name; }   // mahalle seçiliyse "Göztepe, Kadıköy"
+  function favLabel(f) { return f.mah && f.dist ? f.name + ', ' + f.dist : (f.dup && f.admin ? f.name + ' (' + f.admin + ')' : f.name); }   // aynı adlı ilçede il adı da görünür
   function isFav(c) { return state.favs.some(function (f) { return f.id === cityId(c); }); }
-  function cityLabel(c) { return [c.admin && c.admin !== c.name ? c.admin : '', c.country].filter(Boolean).join(', '); }
+  function cityLabel(c) { if (c.mah && c.prov) return c.prov; return [c.admin && c.admin !== c.name ? c.admin : '', c.country].filter(Boolean).join(', '); }
 
   // ---------- Gökyüzü + efektler (sadece transform/opacity animasyonu) ----------
-  var currentTheme = '';
+  var currentTheme = '', prevT = 0, fxT = 0;
   boot.booting = true;
   function setTheme(theme) {
     if (theme === currentTheme) return;
     currentTheme = theme;
     // İlk uygulamada gökyüzü geçişsiz oturur: splash kalktığında altındaki renk zaten hazır (sert renk sıçraması olmaz)
     if (boot.firstTheme) { boot.firstTheme = false; el.sky.classList.add('nt'); }
-    Array.prototype.forEach.call(el.sky.children, function (n) { n.classList.toggle('on', n.dataset.theme === theme); });
+    var fromEl = el.sky.querySelector('.sky-layer.on'), nt = el.sky.classList.contains('nt');
+    Array.prototype.forEach.call(el.sky.children, function (n) {
+      if (!n.dataset.theme) return;   // .sky-tint
+      var on = n.dataset.theme === theme;
+      if (!on && !nt && (n === fromEl || n.classList.contains('prev'))) n.classList.add('prev');   // eski gökyüzü yeni biner bitene dek altta kalır
+      if (on) n.classList.remove('prev');
+      n.classList.toggle('on', on);
+    });
+    clearTimeout(prevT); prevT = setTimeout(function () { Array.prototype.forEach.call(el.sky.querySelectorAll('.sky-layer.prev'), function (n) { n.classList.remove('prev'); }); }, reduceMotion() ? 0 : 1700);
     if (el.sky.classList.contains('nt')) requestAnimationFrame(function () { requestAnimationFrame(function () { el.sky.classList.remove('nt'); }); });
     document.documentElement.setAttribute('data-sky', theme);   // html zemini (klavye/safe-area altı) gökyüzü alt rengine uysun
     if (el.theme) el.theme.setAttribute('content', THEME_COLOR[theme] || '#1668c9');
     try { localStorage.setItem('hd2:themeName', theme); localStorage.setItem('hd2:themeColor', THEME_COLOR[theme] || '#1668c9'); } catch (e) { /* açılış rengi hatırlanamaz, sorun değil */ }
-    if (boot.motion) idle(function () { if (currentTheme === theme) buildFx(theme); }, 300);   // açılışta dekoratif efektler splash kalktıktan sonra; geçişte kare süresini bölmesin
+    if (boot.motion) {   // açılışta dekoratif efektler splash kalktıktan sonra; geçişte önce eski efekt solar, sonra yenisi belirir (ani değişim yok)
+      clearTimeout(fxT);
+      if (el.fx.childNodes.length && !reduceMotion()) { el.fx.classList.remove('in'); fxT = setTimeout(function () { idle(function () { if (currentTheme === theme) buildFx(theme); }, 300); }, 650); }
+      else idle(function () { if (currentTheme === theme) buildFx(theme); }, 300);
+    }
+  }
+  // Dinamik ton (0.7.1): temanın üstünde çok hafif, deterministik bir renk katmanı (sıcaklık, bulut, sis, gün batımı yakınlığı); veri yoksa/hata olursa ton yok.
+  function applyTint(data, start) {
+    var tn = $('skyTint'); if (!tn) return;
+    var t = { c: '#000000', o: 0 };
+    try { if (window.DAILY) t = DAILY.tint(DAILY.fromData(data, start, null)); } catch (e) { /* ton yok */ }
+    tn.style.backgroundColor = t.c; tn.style.opacity = String(t.o);
   }
   // Giriş animasyonu: yalnızca opacity + transform; Web Animations API (zorunlu reflow yok)
   function revealContent(ms, soft) {
@@ -219,7 +239,7 @@
     el.fx.appendChild(f);
     requestAnimationFrame(function () { el.fx.classList.add('in'); });
   }
-  document.addEventListener('visibilitychange', function () { el.fx.classList.toggle('paused', document.hidden); });
+  document.addEventListener('visibilitychange', function () { el.fx.classList.toggle('paused', document.hidden); document.documentElement.classList.toggle('hid', document.hidden); });
   if (reduceMQ && reduceMQ.addEventListener) reduceMQ.addEventListener('change', function () { buildFx(currentTheme); });
 
   // ---------- Çizim parçaları ----------
@@ -331,6 +351,7 @@
 
     var hourStart = c.time.slice(0, 13) + ':00', start = h.time.indexOf(hourStart);
     if (start < 0) start = 0;
+    applyTint(data, start);
     var outlook = rainOutlook(h, start), wetNow = isWet(c.weather_code);
     state.start = start;
     computeAdvice();
@@ -340,7 +361,7 @@
     el.content.innerHTML =
       '<section class="hero" aria-label="Şu anki hava durumu">' +
         '<button class="fav-btn" id="favBtn" type="button" aria-pressed="' + fav + '" aria-label="' + (fav ? 'Favorilerden çıkar' : 'Favorilere ekle') + '">' + uiIcon('star', 22, fav ? 'filled' : '') + '</button>' +
-        '<h1>' + esc(city.name) + '</h1><p class="sub">' + esc(cityLabel(city)) + (cityLabel(city) ? ' · ' : '') + longDate(c.time) + '</p>' +
+        '<h1>' + esc(cityTitle(city)) + '</h1><p class="sub">' + esc(cityLabel(city)) + (cityLabel(city) ? ' · ' : '') + longDate(c.time) + '</p>' +
         '<div class="nowrow">' + weatherIcon(info.kind, isDay, 104, true) +
           '<div class="now-t" ' + dtAttr('temp', 'Sıcaklık') + '><div class="temp" aria-label="' + num(c.temperature_2m) + ' derece">' + num(c.temperature_2m) + '<sup>°</sup></div><p class="cond">' + info.text + '</p></div></div>' +
         '<p class="meta"><span><span class="sr">En yüksek </span>↑ ' + deg(dl.temperature_2m_max[0]) + '</span><span><span class="sr">En düşük </span>↓ ' + deg(dl.temperature_2m_min[0]) + '</span><span ' + dtAttr('feels', 'Hissedilen sıcaklık') + '>Hissedilen ' + deg(c.apparent_temperature) + '</span></p>' +
@@ -383,6 +404,9 @@
     for (kk = s; kk < Math.min(s + 4, h.time.length); kk++) if (h.uv_index && (h.uv_index[kk] || 0) > uvSoon) uvSoon = h.uv_index[kk];
     if (h.wind_gusts_10m && typeof h.wind_gusts_10m[s] === 'number') gust = h.wind_gusts_10m[s];
     var cloth = window.ADVICE ? ADVICE.clothing({ feels: c.apparent_temperature, wind: c.wind_speed_10m, gust: gust, eveMin: fe.length ? Math.min.apply(null, fe) : null, hour: +c.time.slice(11, 13), isDay: c.is_day === 1 }) : null;
+    if (window.DAILY && window.ADVICE) {
+      try { var dx = DAILY.fromData(d, s, null); dx.eveMin = fe.length ? Math.min.apply(null, fe) : null; cloth = DAILY.outfit(dx, cloth, { rain: false, chip: true }) || cloth; } catch (e) { /* eski giyim çipi kalır */ }
+    }
     return { code: c.weather_code, isDay: c.is_day === 1, feels: c.apparent_temperature, wind: c.wind_speed_10m, hum: c.relative_humidity_2m,
       uv: dl.uv_index_max[0] || 0, uvNow: h.uv_index ? (h.uv_index[s] || 0) : 0, uvSoon: uvSoon, rain: rainOutlook(h, s), rainDay: dl.precipitation_probability_max[0] || 0, minNext: minNext,
       aqi: state.aq ? state.aq.value : null, cloth: cloth, mode: state.adv ? state.adv.mode : 'ok' };
@@ -428,13 +452,20 @@
   function todayHtml() {
     var d = state.data, c = d.current;
     var text = Insights.daySummary({ h: d.hourly, dl: d.daily, j: 0, nowIdx: state.start, curTemp: c.temperature_2m, aq: state.aq });
-    var adv = state.adv, acts = adv ? adv.tiles : Insights.activities(activityInput());
-    return '<div class="card-h"><h2 id="h-today">Bugün</h2><span class="sm">Verilerden otomatik özet</span></div>' +
+    var adv = state.adv, acts = adv ? adv.tiles : Insights.activities(activityInput()), cf = null, dx = null;
+    if (window.DAILY) {   // Bugün Senin İçin (0.7.1): konfor satırı + en çok 3 öneri; sert hava engellerinde olumlu dış mekân önerisi yok
+      try {
+        dx = DAILY.fromData(d, state.start, state.aq); cf = DAILY.comfort(dx);
+        if (adv) acts = DAILY.pick(adv.tiles, dx, DAILY.activities(dx));
+      } catch (e) { cf = null; acts = adv ? adv.tiles : acts; }
+    }
+    return '<div class="card-h"><h2 id="h-today">Bugün Senin İçin</h2><span class="sm">Verilerden otomatik özet</span></div>' +
       '<p class="digest">' + esc(text) + '</p>' +
+      (cf ? '<div class="comfort s' + (cf.score >= 8 ? 'g' : cf.score >= 5 ? 'm' : 'b') + '" ' + dtAttr('life', 'Günlük yaşam') + '>' + dtGo() + '<span class="cf-n"><b>' + cf.score + '</b>/10</span><span class="cf-t"><em>Konfor</em>' + esc(cf.label) + '</span></div>' : '') +
       (adv && adv.timing ? '<p class="adv-line">' + esc(adv.timing) + '</p>' : '') +
       '<ul class="acts" aria-label="Aktivite önerileri">' + acts.map(function (a) {
         return '<li class="act l' + (a.id === 'home' ? 'h' : a.lvl) + '"><span class="act-i">' + uiIcon(a.icon, 20) + '</span><span class="act-b"><b>' + esc(a.name) +
-          '</b><em class="lv"><i aria-hidden="true"></i>' + esc(a.label) + '</em><small>' + esc(a.why) + '</small></span></li>';
+          '</b><em class="lv"><i aria-hidden="true"></i>' + esc(a.label) + '</em><small>' + esc(a.why) + '</small>' + (a.score != null ? '<em class="sc" aria-label="Uygunluk puanı ' + a.score + ' / 10">' + a.score + '/10</em>' : '') + '</span></li>';
       }).join('') + '</ul>' + driveRow(adv);
   }
   // Sürüş havası: küçük, tıklanabilir satır (öneri alanının içinde; ana ekran sırası değişmez). Güvenlik garantisi değildir.
@@ -716,7 +747,7 @@
     else {
       if (state.favs.length >= MAX_FAVS) { say('En fazla ' + MAX_FAVS + ' favori şehir ekleyebilirsin.'); return; }
       var fv = { id: id, name: c.name, admin: c.admin, country: c.country, lat: c.lat, lon: c.lon };
-      if (c.dist) { fv.prov = c.prov; fv.dist = c.dist; if (c.dup) fv.dup = 1; }   // il/ilçe seçimi (bildirim sunucusuna da gider)
+      if (c.dist) { fv.prov = c.prov; fv.dist = c.dist; if (c.dup) fv.dup = 1; if (c.mah) fv.mah = c.mah; }   // il/ilçe seçimi (bildirim sunucusuna da gider)
       state.favs.push(fv);
     }
     store(FAV_KEY, state.favs);
@@ -811,7 +842,7 @@
     render(city, data, opts);
     renderFavs();
     if (swPerf && swPerf.city === city && swPerf['sw-content'] == null) swm('sw-content');
-    document.title = Math.round(data.current.temperature_2m) + '° ' + city.name + ' · EYRIVO';
+    document.title = Math.round(data.current.temperature_2m) + '° ' + cityTitle(city) + ' · EYRIVO';
   }
   function loadCity(city, o) {
     o = o || {};
@@ -824,7 +855,7 @@
       swPerf = { city: city, t0: performance.now() }; mark('sw-start');
       el.app.classList.add('switching');
       var h1 = el.content.querySelector('.hero h1'), sb = el.content.querySelector('.hero .sub');
-      if (h1) h1.textContent = city.name;
+      if (h1) h1.textContent = cityTitle(city);
       if (sb) { var lb = cityLabel(city), dt = sb.textContent.split(' · ').pop(); sb.textContent = lb + (lb ? ' · ' : '') + dt; }   // alt satırda eski şehrin adı kalmasın
       renderFavs(city); say('');
       hideSuggest();
@@ -877,7 +908,7 @@
           }
           el.content.classList.add('is-stale');
           if (state.data && state.city === city) refreshInsights();   // eski veride kesin saatli öneri kalmasın
-          document.title = city.name + ' · EYRIVO';
+          document.title = cityTitle(city) + ' · EYRIVO';
           say((offline ? 'İnternet bağlantısı yok. ' : 'Güncel veri alınamadı. ') + 'Gösterilen veri eski. Son güncelleme: ' + stamp(hit.t) + '.', function () { loadCity(city); });
         } else if (o.silent) {
           return;
@@ -894,7 +925,7 @@
         el.app.classList.remove('loading'); el.app.classList.remove('switching'); hideSplash();
         if (sw && aqJob) { aqJob.ctl.abort(); aqJob = null; if (state.aqState === 'loading' && state.city) loadAQ(state.city); }   // hata: ekrandaki şehrin hava kalitesi yarım kalmasın
         if (sw && state.city) {   // hata durumunda başlık/çip, ekrandaki gerçek şehre geri döner
-          var h = el.content.querySelector('.hero h1'); if (h && h.textContent !== state.city.name) h.textContent = state.city.name;
+          var h = el.content.querySelector('.hero h1'); if (h && h.textContent !== cityTitle(state.city)) h.textContent = cityTitle(state.city);
           renderFavs();
         }
       });

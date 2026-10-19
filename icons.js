@@ -11,7 +11,7 @@
         '" x2="' + (cx + Math.cos(a) * r2).toFixed(1) + '" y2="' + (cy + Math.sin(a) * r2).toFixed(1) + '"/>';
     }
     return '<g class="spin" style="transform-origin:' + cx + 'px ' + cy + 'px" stroke="#FFC93C" stroke-width="3.2" stroke-linecap="round">' + rays + '</g>' +
-      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="#FFC93C"/>';
+      '<circle class="core" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="#FFC93C"/>';
   }
   function moon(cx, cy, s) {
     return '<g transform="translate(' + (cx - 26 * s) + ' ' + (cy - 26 * s) + ') scale(' + s + ')">' +

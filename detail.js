@@ -11,7 +11,7 @@
   var CLIM = null, inflight = {}, failAt = {};
   var TABS = [
     ['temp', 'Sıcaklık', 'Sıcaklık'], ['feels', 'Hissedilen', 'Hissedilen sıcaklık'], ['wind', 'Rüzgâr', 'Rüzgâr'], ['uv', 'UV', 'UV indeksi'], ['rain', 'Yağış', 'Yağış'],
-    ['press', 'Basınç', 'Basınç'], ['vis', 'Görüş', 'Görüş'], ['hum', 'Nem', 'Nem ve çiy noktası'], ['sun', 'Güneş', 'Güneş ve gün ışığı'], ['drive', 'Sürüş', 'Sürüş havası']
+    ['press', 'Basınç', 'Basınç'], ['vis', 'Görüş', 'Görüş'], ['hum', 'Nem', 'Nem ve çiy noktası'], ['sun', 'Güneş', 'Güneş ve gün ışığı'], ['drive', 'Sürüş', 'Sürüş havası'], ['life', 'Yaşam', 'Günlük yaşam']
   ];
   var DRIVE_COL = ['#6ee7a3', '#ffd25e', '#ff9a8f'];
   var COL = { temp: '#ffd27a', feels: 'rgba(255,255,255,.85)', ref: 'rgba(255,255,255,.5)', rain: '#8fd8ff', prob: '#ffffff', wind: '#b6f0e0', gust: '#ffb86b', press: '#d9c9ff', vis: '#a9e4ff', hum: '#8fd8ff', dew: '#ffd27a', gold: '#ffc93c' };
@@ -50,8 +50,25 @@
       case 'hum': return anyIn('relative_humidity_2m', a, b) || anyIn('dew_point_2m', a, b);
       case 'sun': return !!(dl && dl.sunrise && dl.sunset && dl.sunrise[0] && dl.sunset[0]);
       case 'drive': return !!(window.ADVICE && st().adv && st().adv.drive);
+      case 'life': return !!(window.DAILY && lifeX() && DAILY.comfort(lifeX()));
     }
     return false;
+  }
+  // ---------- Günlük yaşam sekmesi (0.7.1): Konfor, aktivite endeksleri, giyim, evcil hayvan. Kurallar daily.js'te; ek istek yok ----------
+  function lifeX() { try { return DAILY.fromData(dat(), st().start || 0, st().aq || null); } catch (e) { return null; } }
+  function lifeHtml() {
+    var x = lifeX(), cf = x && DAILY.comfort(x); if (!cf) return '<p class="hint">Günlük yaşam değerlendirmesi için yeterli veri yok.</p>';
+    var out = [], acts = DAILY.activities(x), ot = DAILY.outfit(x, window.ADVICE ? ADVICE.clothing({ feels: x.feels, wind: x.wind, gust: x.gust, eveMin: x.eveMin, hour: x.hour, isDay: x.isDay }) : null), pt = DAILY.pet(x);
+    out.push('<section class="dt-box lf-box" aria-label="Konfor endeksi"><h3>EYRIVO Konfor Endeksi</h3><div class="lf-score"><b>' + cf.score + '<small>/10</small></b><span>' + esc(cf.label) + '</span></div>' +
+      '<div class="lf-bar" role="img" aria-label="Konfor ' + cf.score + '/10"><i style="width:' + cf.score * 10 + '%"></i></div><ul class="lf-why">' + cf.reasons.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>' +
+      (cf.estimated ? '<p class="hint">Hissedilen sıcaklık verisi yok; gerçek sıcaklıkla tahmin edildi.</p>' : '') + '</section>');
+    if (acts.length) out.push('<section class="dt-box lf-box" aria-label="Aktivite endeksleri"><h3>Aktivite endeksleri</h3><ul class="lf-acts">' + acts.map(function (a) {
+      return '<li class="' + (a.blocked ? 'off' : '') + '"><span class="lf-n">' + C.uiIcon(a.icon, 18) + esc(a.name) + '</span><b>' + a.score + '/10</b><small>' + esc(a.why) + '</small></li>';
+    }).join('') + '</ul></section>');
+    if (ot && ot.text) out.push('<section class="dt-box lf-box" aria-label="Giyim"><h3>Ne giymeli?</h3><p class="dt-s">' + esc(ot.text) + '</p></section>');
+    if (pt) out.push('<section class="dt-box lf-box lf-pet l' + pt.level + '" aria-label="Evcil hayvan konforu"><h3>' + esc(pt.title) + '</h3><ul class="lf-why">' + pt.reasons.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul><p class="hint">' + esc(pt.note) + '</p></section>');
+    out.push('<p class="hint">Bu değerlendirmeler Open-Meteo verisinden sabit kurallarla hesaplanır; tahmindir, tıbbi ya da veterinerlik tavsiyesi değildir.</p>');
+    return out.join('');
   }
   function availTabs() { return TABS.filter(function (t) { return avail(t[0]); }); }
 
@@ -80,6 +97,32 @@
   }
 
   // ---------- Grafik (elle çizilen SVG; kütüphane yok) ----------
+  // Çizgi yolu: ardışık noktalar monoton kübik (Fritsch–Carlson) eğriyle birleşir — noktaların kendisi değişmez, eğri aşım (taşma) yapmaz; boşluklar (null) ayrı parça olur
+  function linePath(pts) {
+    var out = '', seg = [], i;
+    function flush() {
+      var n = seg.length; if (!n) return;
+      out += 'M' + seg[0][0].toFixed(1) + ' ' + seg[0][1].toFixed(1);
+      if (n === 1) { seg = []; return; }
+      var dx = [], m = [], t = [];
+      for (i = 0; i < n - 1; i++) { dx[i] = seg[i + 1][0] - seg[i][0]; m[i] = (seg[i + 1][1] - seg[i][1]) / (dx[i] || 1); }
+      t[0] = m[0]; t[n - 1] = m[n - 2];
+      for (i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+      for (i = 0; i < n - 1; i++) {
+        if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+        var a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+        if (s > 9) { var k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+      }
+      for (i = 0; i < n - 1; i++) {
+        var h3 = dx[i] / 3;
+        out += 'C' + (seg[i][0] + h3).toFixed(1) + ' ' + (seg[i][1] + t[i] * h3).toFixed(1) + ' ' + (seg[i + 1][0] - h3).toFixed(1) + ' ' + (seg[i + 1][1] - t[i + 1] * h3).toFixed(1) + ' ' + seg[i + 1][0].toFixed(1) + ' ' + seg[i + 1][1].toFixed(1);
+      }
+      seg = [];
+    }
+    pts.forEach(function (p) { if (p === null) flush(); else seg.push(p); });
+    flush();
+    return out;
+  }
   function drawChart(sp, sel) {
     var W = 320, Hh = sp.H || 150, L = 40, R = 8, T = sp.arrows ? 26 : 10, B = 24, n = sp.n, step = (W - L - R) / n, h = H();
     var all = sp.lines.concat(sp.bars), vals = [];
@@ -99,8 +142,7 @@
       bs.vals.forEach(function (v, kk) { if (v === null) return; var y = Y(Math.max(v, lo)), hh = Math.max(v > 0 ? 1.5 : 0, Y(lo) - y); g += '<rect x="' + (X(kk) - bw / 2).toFixed(1) + '" y="' + (Y(lo) - hh).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="1.5" fill="' + (bs.colorFn ? bs.colorFn(v) : bs.color) + '"/>'; });
     });
     sp.lines.forEach(function (ls) {
-      var path = '', pen = false;
-      ls.vals.forEach(function (v, kk) { if (v === null) { pen = false; return; } path += (pen ? 'L' : 'M') + X(kk).toFixed(1) + ' ' + Y(v, ls.own).toFixed(1); pen = true; });
+      var path = linePath(ls.vals.map(function (v, kk) { return v === null ? null : [X(kk), Y(v, ls.own)]; }));
       if (path) g += '<path d="' + path + '" fill="none" stroke="' + ls.color + '" stroke-width="' + ls.w + '" stroke-linecap="round" stroke-linejoin="round"' + (ls.dash ? ' stroke-dasharray="' + ls.dash + '"' : '') + (ls.op ? ' opacity="' + ls.op + '"' : '') + '/>';
     });
     if (sp.arrows) {   // rüzgâr yönü: 3 saatte bir, rüzgârın gittiği yöne bakan küçük ok
@@ -118,36 +160,36 @@
   function isToday(i) { return H().time[i].slice(0, 10) === dat().current.time.slice(0, 10); }
   function Sref(key, from, to) { var o = []; for (var i = from; i <= to; i++) { var j = isToday(i) ? D.sameHourAgo(H().time, i, 1) : -1; o.push(j < 0 ? null : M.at(H()[key], j)); } return o; }
   function hasAny(arr) { return arr.some(function (v) { return v !== null; }); }
-  function withRef(sp, key, from, to) { var r = Sref(key, from, to); if (hasAny(r)) { sp.lines.unshift({ vals: r, color: COL.ref, w: 1.6, dash: '3 4', ref: true }); sp.legend = (sp.legend ? sp.legend + ' · ' : '') + 'Soluk kesik çizgi: dün aynı saat'; } return sp; }
+  function withRef(sp, key, from, to) { var r = Sref(key, from, to); if (hasAny(r)) { sp.lines.unshift({ vals: r, color: COL.ref, w: 1.2, dash: '3 4', ref: true }); sp.legend = (sp.legend ? sp.legend + ' · ' : '') + 'Soluk kesik çizgi: dün aynı saat'; } return sp; }
 
   function chartSpecs(id) {
     var w = win(), a = w[0], b = w[1], n = b - a + 1, sp;
     switch (id) {
       case 'temp':
-        sp = { name: 'Sıcaklık', from: a, n: n, lines: [{ vals: S('temperature_2m', a, b), color: COL.temp, w: 2.6 }], bars: [], minSpan: 4, axis: function (v) { return C.num(v) + '°'; }, legend: 'Düz çizgi: sıcaklık' };
+        sp = { name: 'Sıcaklık', from: a, n: n, lines: [{ vals: S('temperature_2m', a, b), color: COL.temp, w: 1.9 }], bars: [], minSpan: 4, axis: function (v) { return C.num(v) + '°'; }, legend: 'Düz çizgi: sıcaklık' };
         return [withRef(sp, 'temperature_2m', a, b)];
       case 'feels':
-        sp = { name: 'Hissedilen sıcaklık', from: a, n: n, lines: [{ vals: S('apparent_temperature', a, b), color: COL.feels, w: 2.6 }, { vals: S('temperature_2m', a, b), color: COL.temp, w: 1.8, dash: '4 4' }], bars: [], minSpan: 4, axis: function (v) { return C.num(v) + '°'; }, legend: 'Düz beyaz çizgi: hissedilen · Kesik sarı çizgi: gerçek sıcaklık' };
+        sp = { name: 'Hissedilen sıcaklık', from: a, n: n, lines: [{ vals: S('apparent_temperature', a, b), color: COL.feels, w: 1.9 }, { vals: S('temperature_2m', a, b), color: COL.temp, w: 1.4, dash: '4 4' }], bars: [], minSpan: 4, axis: function (v) { return C.num(v) + '°'; }, legend: 'Düz beyaz çizgi: hissedilen · Kesik sarı çizgi: gerçek sıcaklık' };
         return [sp];
       case 'wind':
-        sp = { name: 'Rüzgâr', from: a, n: n, lines: [{ vals: S('wind_speed_10m', a, b), color: COL.wind, w: 2.6 }, { vals: S('wind_gusts_10m', a, b), color: COL.gust, w: 1.8, dash: '4 4' }], bars: [], yMin: 0, minSpan: 20, axis: function (v) { return C.round(v); },
+        sp = { name: 'Rüzgâr', from: a, n: n, lines: [{ vals: S('wind_speed_10m', a, b), color: COL.wind, w: 1.9 }, { vals: S('wind_gusts_10m', a, b), color: COL.gust, w: 1.4, dash: '4 4' }], bars: [], yMin: 0, minSpan: 20, axis: function (v) { return C.round(v); },
           arrows: S('wind_direction_10m', a, b), legend: 'Düz çizgi: rüzgâr · Kesik çizgi: hamle (km/sa) · Oklar: rüzgârın gittiği yön' };
         if (!hasAny(sp.arrows)) sp.arrows = null;
         return [withRef(sp, 'wind_speed_10m', a, b)];
       case 'uv':
         return [{ name: 'UV indeksi', from: a, n: n, lines: [], bars: [{ vals: S('uv_index', a, b), colorFn: function (v) { return C.UV_CLASSES[C.uvClass(v)][1]; } }], yMin: 0, yMax: 8, minSpan: 6, guides: [{ v: 3 }, { v: 6 }, { v: 8 }, { v: 11 }], axis: function (v) { return fmt1(v); }, legend: 'Sütun rengi risk sınıfını gösterir; noktalı çizgiler 3 · 6 · 8 · 11 sınırları' }];
       case 'rain':
-        return [{ name: 'Yağış', from: a, n: n, lines: [{ vals: S('precipitation_probability', a, b), color: COL.prob, w: 1.8, own: [0, 100] }], bars: [{ vals: S('precipitation', a, b), color: COL.rain }], yMin: 0, minSpan: 2, axis: function (v) { return fmt1(v); }, legend: 'Sütun: yağış miktarı (mm) · Çizgi: yağış ihtimali (%)' }];
+        return [{ name: 'Yağış', from: a, n: n, lines: [{ vals: S('precipitation_probability', a, b), color: COL.prob, w: 1.4, own: [0, 100] }], bars: [{ vals: S('precipitation', a, b), color: COL.rain }], yMin: 0, minSpan: 2, axis: function (v) { return fmt1(v); }, legend: 'Sütun: yağış miktarı (mm) · Çizgi: yağış ihtimali (%)' }];
       case 'press': {
         var pf = Math.max(0, a - 12), pn = b - pf + 1;
-        sp = { name: 'Basınç', from: pf, n: pn, now: a, lines: [{ vals: S('pressure_msl', pf, b), color: COL.press, w: 2.6 }], bars: [], minSpan: 6, axis: function (v) { return C.round(v); }, legend: 'hPa · Son 12 saat ve önümüzdeki 24 saat (kesik çizgi: şimdi)' };
+        sp = { name: 'Basınç', from: pf, n: pn, now: a, lines: [{ vals: S('pressure_msl', pf, b), color: COL.press, w: 1.9 }], bars: [], minSpan: 6, axis: function (v) { return C.round(v); }, legend: 'hPa · Son 12 saat ve önümüzdeki 24 saat (kesik çizgi: şimdi)' };
         return [sp];
       }
       case 'vis':
-        return [{ name: 'Görüş', from: a, n: n, lines: [{ vals: S('visibility', a, b).map(function (v) { return v === null ? null : v / 1000; }), color: COL.vis, w: 2.6 }], bars: [], yMin: 0, minSpan: 10, guides: [{ v: 1 }, { v: 4 }, { v: 10 }], axis: function (v) { return fmt1(v); }, legend: 'km · noktalı çizgiler 1 · 4 · 10 km' }];
+        return [{ name: 'Görüş', from: a, n: n, lines: [{ vals: S('visibility', a, b).map(function (v) { return v === null ? null : v / 1000; }), color: COL.vis, w: 1.9 }], bars: [], yMin: 0, minSpan: 10, guides: [{ v: 1 }, { v: 4 }, { v: 10 }], axis: function (v) { return fmt1(v); }, legend: 'km · noktalı çizgiler 1 · 4 · 10 km' }];
       case 'hum':
-        return [{ name: 'Nem', from: a, n: n, lines: [{ vals: S('relative_humidity_2m', a, b), color: COL.hum, w: 2.6 }], bars: [], yMin: 0, yMax: 100, minSpan: 100, axis: function (v) { return '%' + C.round(v); }, legend: 'Bağıl nem (%)', title: 'Nem' },
-          { name: 'Çiy noktası', from: a, n: n, lines: [{ vals: S('dew_point_2m', a, b), color: COL.dew, w: 2.6 }, { vals: S('temperature_2m', a, b), color: COL.feels, w: 1.6, dash: '4 4' }], bars: [], minSpan: 4, axis: function (v) { return C.num(v) + '°'; }, legend: 'Düz sarı çizgi: çiy noktası · Kesik çizgi: sıcaklık (birbirine yaklaşınca hava nemli hissedilir)', title: 'Çiy noktası ve sıcaklık' }];
+        return [{ name: 'Nem', from: a, n: n, lines: [{ vals: S('relative_humidity_2m', a, b), color: COL.hum, w: 1.9 }], bars: [], yMin: 0, yMax: 100, minSpan: 100, axis: function (v) { return '%' + C.round(v); }, legend: 'Bağıl nem (%)', title: 'Nem' },
+          { name: 'Çiy noktası', from: a, n: n, lines: [{ vals: S('dew_point_2m', a, b), color: COL.dew, w: 1.9 }, { vals: S('temperature_2m', a, b), color: COL.feels, w: 1.2, dash: '4 4' }], bars: [], minSpan: 4, axis: function (v) { return C.num(v) + '°'; }, legend: 'Düz sarı çizgi: çiy noktası · Kesik çizgi: sıcaklık (birbirine yaklaşınca hava nemli hissedilir)', title: 'Çiy noktası ve sıcaklık' }];
     }
     return [];
   }
@@ -180,13 +222,13 @@
       g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="rgba(255,255,255,.4)"/>';
       var up = c.curve.filter(function (p) { return p[1] > 0; });
       if (up.length > 1) { area = 'M' + X(info.calc.rise).toFixed(1) + ' ' + Y(0).toFixed(1); up.forEach(function (p) { area += 'L' + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }); area += 'L' + X(info.calc.set).toFixed(1) + ' ' + Y(0).toFixed(1) + 'Z'; g += '<path d="' + area + '" fill="rgba(255,201,60,.2)"/>'; }
-      g += '<path d="' + path + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+      g += '<path d="' + path + '" fill="none" stroke="' + COL.gold + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
       g += '<line x1="' + X(c.noon).toFixed(1) + '" x2="' + X(c.noon).toFixed(1) + '" y1="' + T + '" y2="' + (Hh - B) + '" stroke="rgba(255,255,255,.3)" stroke-dasharray="3 4"/>';
       var ne = D.elevAt(c, nm); nowY = Y(ne); night = ne < -0.833;
     } else {   // güvenilir hesap yok: yalnızca Open-Meteo doğuş/batışı arasında yaklaşık yay (yükseklik ekseni yok)
       var rise = info.rise, set = info.set, A = 60, base = Hh - B - 28, YY = function (m) { return base - A * Math.sin(Math.PI * (m - rise) / (set - rise)); }, pts = '';
       for (k = 0; k <= 40; k++) { var m = rise + (set - rise) * k / 40; pts += (k ? 'L' : 'M') + X(m).toFixed(1) + ' ' + YY(m).toFixed(1); }
-      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" stroke="rgba(255,255,255,.4)"/><path d="' + pts + '" fill="none" stroke="' + COL.gold + '" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="1.5 5"/>';
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + base + '" y2="' + base + '" stroke="rgba(255,255,255,.4)"/><path d="' + pts + '" fill="none" stroke="' + COL.gold + '" stroke-width="2" stroke-linecap="round" stroke-dasharray="1.5 5"/>';
       night = nm < rise || nm > set; nowY = night ? base : YY(nm);
     }
     g += '<circle cx="' + X(nm).toFixed(1) + '" cy="' + nowY.toFixed(1) + '" r="9" fill="' + (night ? '#cfd8ff' : COL.gold) + '" opacity=".25"/><circle cx="' + X(nm).toFixed(1) + '" cy="' + nowY.toFixed(1) + '" r="5" fill="' + (night ? '#cfd8ff' : COL.gold) + '"/>';
@@ -504,6 +546,7 @@
   }
   function ensureTab() { if (!avail(P.tab)) { var f = availTabs()[0]; P.tab = f ? f[0] : 'temp'; } }
   function paintHour() {
+    if (P.tab === 'life') { C.$('dtHead').innerHTML = ''; C.$('dtLead').innerHTML = ''; C.$('dtCharts').innerHTML = ''; C.$('dtBody').innerHTML = lifeHtml(); return; }
     var i = selIndex();
     C.$('dtHead').innerHTML = headHtml(P.tab, i);
     C.$('dtLead').innerHTML = leadHtml(P.tab, i);

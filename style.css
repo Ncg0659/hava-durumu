@@ -37,9 +37,12 @@ ul { list-style: none; }
 
 /* ---------- Gökyüzü katmanları ---------- */
 #sky { position: fixed; inset: 0; z-index: -3; }
-.sky-layer { position: absolute; inset: 0; opacity: 0; transition: opacity .28s ease; }   /* tema geçişi: kısa, belirgin sıçrama yok */
-.sky-layer.on { opacity: 1; }
+.sky-layer { position: absolute; inset: 0; opacity: 0; }
+/* Sinematik geçiş: yeni gökyüzü eskisinin ÜSTÜNE yavaşça biner (eski katman .prev ile altta tam görünür kalır → ara renk çukuru/sıçrama olmaz); yalnızca opacity */
+.sky-layer.prev { opacity: 1; }
+.sky-layer.on { opacity: 1; z-index: 1; transition: opacity 1.6s cubic-bezier(.4, 0, .2, 1); }
 #sky.nt .sky-layer { transition: none; }   /* ilk tema, splash'ın altında anında oturur */
+.sky-tint { position: absolute; inset: 0; z-index: 2; opacity: 0; background-color: #000; transition: opacity 2.4s ease, background-color 2.4s ease; pointer-events: none; }   /* dinamik ton: çok hafif, deterministik */
 [data-theme="clear-day"]   { background: linear-gradient(180deg, #1668c9 0%, #2f8fe0 45%, #6bb8ee 100%); }
 [data-theme="clear-night"] { background: linear-gradient(180deg, #070f26 0%, #12214f 55%, #2a2f73 100%); }
 [data-theme="cloud-day"]   { background: linear-gradient(180deg, #3f5f80 0%, #6f8ca6 60%, #93abbf 100%); }
@@ -52,7 +55,7 @@ ul { list-style: none; }
 [data-theme="storm"]       { background: linear-gradient(180deg, #15132c 0%, #2c2650 55%, #473b6b 100%); }
 
 /* ---------- Efektler: yalnızca transform/opacity, düşük yoğunluk ---------- */
-#fx { position: fixed; inset: 0; z-index: -2; pointer-events: none; overflow: hidden; contain: strict; opacity: 0; transition: opacity .9s ease; }
+#fx { position: fixed; inset: 0; z-index: -2; pointer-events: none; overflow: hidden; contain: strict; opacity: 0; transition: opacity .8s ease; }
 #fx.in { opacity: 1; }
 #fx.paused i { animation-play-state: paused; }
 #fx i { position: absolute; display: block; }
@@ -205,20 +208,30 @@ button.dy:active { background: rgba(255, 255, 255, .08); }
 .bar i { position: absolute; top: 0; bottom: 0; border-radius: 6px; background-image: linear-gradient(90deg, #6fd0ff, #ffd166 55%, #ff8a5b); background-repeat: no-repeat; }
 .bar s { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(15, 39, 66, .6); }
 
-/* ---------- Hareketli ikonlar (sadece .anim, yavaş) ---------- */
+/* ---------- Hareketli ikonlar (sadece .anim; sakin, düşük güçlü: yalnızca transform/opacity; prefers-reduced-motion'da kapalı) ---------- */
 .ic { display: block; flex: none; overflow: visible; }
-.motion .ic.anim .spin { animation: spin 50s linear infinite; }
-.motion .ic.anim .cf { animation: float 8s ease-in-out infinite alternate; }
-.motion .ic.anim .drop { animation: drop 1.6s linear infinite; }
-.motion .ic.anim .flake { animation: flake 4.5s ease-in-out infinite; }
-.motion .ic.anim .flash { animation: bolt 4s infinite; }
-.motion .ic.anim .tw { animation: twinkle 4s ease-in-out infinite; }
-.motion .ic.anim .mist { animation: float 7s ease-in-out infinite alternate; }
+.motion .ic.anim .spin { animation: spin 60s linear infinite; }
+.motion .ic.anim .core { transform-box: fill-box; transform-origin: center; animation: sunbreath 7s ease-in-out infinite alternate; }
+.motion .ic.anim .cf { animation: float 9s ease-in-out infinite alternate; }
+.motion .ic.anim .cf:nth-of-type(2n) { animation-duration: 11s; animation-delay: -3s; }
+.motion .ic.anim .drop { animation: drop 1.9s cubic-bezier(.4, 0, .6, 1) infinite; }
+.motion .ic.anim .drop:nth-of-type(2n) { animation-duration: 2.3s; }
+.motion .ic.anim .flake { animation: flake 5.5s ease-in-out infinite; }
+.motion .ic.anim .flake:nth-of-type(2n) { animation-duration: 6.5s; animation-name: flake2; }
+.motion .ic.anim .flash { animation: bolt 5s infinite; }
+.motion .ic.anim .tw { animation: twinkle 5s ease-in-out infinite; }
+.motion .ic.anim .mist { animation: mistdrift 9s ease-in-out infinite alternate; }
+.motion .ic.anim .mist line:nth-child(2) { animation: mistdrift 11s ease-in-out -4s infinite alternate-reverse; }
+.motion .ic.anim .mist line:nth-child(3) { animation: mistdrift 10s ease-in-out -2s infinite alternate; }
+html.hid .ic.anim * { animation-play-state: paused !important; }   /* sekme arka plandayken ikonlar durur */
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes float { to { transform: translateX(3px); } }
-@keyframes drop { 0% { transform: translateY(-4px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(9px); opacity: 0; } }
+@keyframes sunbreath { from { transform: scale(1); } to { transform: scale(1.045); } }
+@keyframes float { from { transform: translate(-1.5px, .5px); } to { transform: translate(2.5px, -1px); } }
+@keyframes mistdrift { from { transform: translateX(-2px); opacity: .75; } to { transform: translateX(3px); opacity: 1; } }
+@keyframes drop { 0% { transform: translateY(-4px); opacity: 0; } 25% { opacity: .95; } 100% { transform: translateY(9px); opacity: 0; } }
 @keyframes flake { 0% { transform: translate(0, -3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(3px, 9px); opacity: 0; } }
-@keyframes bolt { 0%, 55%, 100% { opacity: 1; } 60% { opacity: .25; } 65% { opacity: 1; } }
+@keyframes flake2 { 0% { transform: translate(0, -3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(-3px, 9px); opacity: 0; } }
+@keyframes bolt { 0%, 55%, 100% { opacity: 1; } 58% { opacity: .3; } 61% { opacity: 1; } 64% { opacity: .55; } 67% { opacity: 1; } }
 
 .foot { margin-top: 22px; text-align: center; font-size: 13px; color: var(--ink-3); }
 .foot a { color: var(--ink-2); text-underline-offset: 3px; }
@@ -261,6 +274,7 @@ button.dy:active { background: rgba(255, 255, 255, .08); }
 .act.l2 { --c: #ff9a8f; }
 .act.l2 { background: rgba(255, 255, 255, .06); }
 .act.l2 .act-i { opacity: .7; }
+.act .sc { margin-top: 2px; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--c); letter-spacing: .2px; }
 .act small { font-size: 12px; line-height: 1.25; color: var(--ink-3); }
 
 /* Hava kalitesi */
@@ -667,3 +681,34 @@ html.lock, html.lock body { overflow: hidden; }
 }
 @media (max-width: 340px) { .fs-chip { padding: 0 10px; font-size: 12.5px; } .fs-chip.st { padding: 0 7px; font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .pm, .fs-chip { transition: none; } }
+
+/* ================= 0.7.1: Günlük yaşam zekâsı ================= */
+/* Ana ekran: Konfor satırı (Bugün Senin İçin) */
+.comfort { --c: #6ee7a3; position: relative; display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 9px 30px 9px 12px; border-radius: 16px; background: rgba(255, 255, 255, .1); min-width: 0; cursor: pointer; }
+.comfort.sm { --c: #ffd25e; }
+.comfort.sb { --c: #ff9a8f; }
+.comfort .dt-go { top: 50%; right: 10px; transform: translateY(-50%); }
+.cf-n { flex: none; min-width: 52px; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.cf-n b { font-size: 24px; font-weight: 700; color: var(--c); letter-spacing: -.3px; }
+.cf-t { display: flex; flex-direction: column; min-width: 0; font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+.cf-t em { font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--ink-3); letter-spacing: .3px; text-transform: uppercase; }
+/* Ayrıntı ekranı: Yaşam sekmesi */
+.lf-box { margin-top: 10px; }
+.lf-score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.lf-score b { font-size: 34px; font-weight: 700; letter-spacing: -.5px; }
+.lf-score small { font-size: 16px; font-weight: 500; color: var(--ink-2); }
+.lf-score span { font-size: 16px; font-weight: 600; }
+.lf-bar { height: 7px; margin: 8px 0 6px; border-radius: 7px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+.lf-bar i { display: block; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #ff9a8f, #ffd25e 50%, #6ee7a3); background-size: 100vw 100%; }
+.lf-why { margin: 4px 0 0; padding: 0; display: grid; gap: 3px; font-size: 13.5px; color: var(--ink-2); }
+.lf-why li::before { content: "• "; color: var(--ink-3); }
+.lf-acts { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; }
+.lf-acts li { display: grid; grid-template-columns: 1fr auto; gap: 1px 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, .1); }
+.lf-acts li:first-child { border-top: 0; }
+.lf-n { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; min-width: 0; }
+.lf-acts b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.lf-acts small { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2); }
+.lf-acts li.off { opacity: .62; }
+.lf-pet.l1 { box-shadow: inset 3px 0 0 #ffd25e; }
+.lf-pet.l2 { box-shadow: inset 3px 0 0 #ff9a8f; }
+@media (max-width: 345px) { .cf-n b { font-size: 21px; } .cf-t { font-size: 13.5px; } }

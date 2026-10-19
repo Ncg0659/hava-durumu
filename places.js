@@ -6,7 +6,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var wrap = $('locSheet'), panel = wrap.querySelector('.sheet'), body = $('locBody'), app = $('app');
   var data = null, loading = null;
-  var S = { view: 'root', prov: -1, dist: -1, opener: null }, closeT = 0;
+  var S = { view: 'root', prov: -1, dist: -1, mah: -1, opener: null, mlist: null, mtok: 0 }, closeT = 0;
+  var mahCache = {};   // il adı → Promise<{ ilçe: [[ad,lat,lon],...] }>  (mah/<il>.json, ilk ihtiyaçta, yalnızca o il)
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   // Arama için katlama: İ I ı i → i; Ç Ğ Ş Ö Ü ve â/î/û gibi şapkalılar → c g s o u a i u (büyük/küçük fark etmez)
@@ -32,6 +33,16 @@
       }).catch(function (e) { loading = null; throw e; });
     return loading;
   }
+  // Mahalle verisi: yalnızca seçilen ilin dosyası istenir (≈5–40 KB); açılışta ve ilçe seçilirken hiçbir şey indirilmez.
+  function mahFile(provName) { return 'mah/' + fold(provName).replace(/ /g, '-') + '.json'; }
+  function loadMah(provName) {
+    if (mahCache[provName]) return mahCache[provName];
+    var p = fetch(mahFile(provName)).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (j) { if (!j || !j.d || typeof j.d !== 'object') throw new Error('veri bozuk'); return j.d; });
+    p.catch(function () { delete mahCache[provName]; });   // hata kalıcı olmasın: tekrar denenebilir
+    mahCache[provName] = p; return p;
+  }
+  function mahItems() { return (S.mlist || []).map(function (m) { return { n: m[0], f: fold(m[0]), lat: m[1], lon: m[2] }; }); }
   function provIndex(name) { var f = fold(name), i; for (i = 0; i < data.il.length; i++) if (data.il[i].f === f) return i; return -1; }
   function distIndex(pi, name) { var d = data.il[pi].d, i; for (i = 0; i < d.length; i++) if (d[i].n === name) return i; return -1; }
 
@@ -55,22 +66,39 @@
   }
   function root() {
     var pr = S.prov >= 0 ? data.il[S.prov] : null, ds = pr && S.dist >= 0 ? pr.d[S.dist] : null;
-    show(head('Konum seç', 'Türkiye · il ve ilçe') +
-      '<div class="lp-fields">' + row('İL', pr ? pr.n : 'İl seç', 'prov', !pr) + (pr ? row('İLÇE', ds ? ds.n : 'İlçe seç', 'dist', !ds) : '') + '</div>' +
+    var mh = ds && S.mah >= 0 && S.mlist && S.mlist[S.mah] ? S.mlist[S.mah][0] : '';
+    show(head('Konum seç', 'Türkiye · il, ilçe ve mahalle') +
+      '<div class="lp-fields">' + row('İL', pr ? pr.n : 'İl seç', 'prov', !pr) + (pr ? row('İLÇE', ds ? ds.n : 'İlçe seç', 'dist', !ds) : '') +
+      (ds ? row('MAHALLE (İSTEĞE BAĞLI)', mh || 'Mahalle seç', 'mah', !mh) : '') + '</div>' +
       '<p class="lp-note">Türkiye dışındaki şehirler için ana ekrandaki “Şehir ara” alanını kullan.</p>' +
       '<div class="lp-foot"><button type="button" class="lp-go" data-go' + (ds ? '' : ' disabled') + '>Bu konumu kullan</button></div>', 'root');
   }
   function list(kind) {
-    var isP = kind === 'prov';
-    show(head(isP ? 'İl seç' : 'İlçe seç', isP ? data.il.length + ' il' : esc(data.il[S.prov].n), true) +
+    var isP = kind === 'prov', isM = kind === 'mah', nm = isP ? 'İl' : isM ? 'Mahalle' : 'İlçe';
+    if (isM && !S.mlist) { mahLoading(); return; }
+    show(head(nm + ' seç', isP ? data.il.length + ' il' : isM ? esc(data.il[S.prov].d[S.dist].n + ' · ' + data.il[S.prov].n) : esc(data.il[S.prov].n), true) +
       '<label class="lp-search"><span aria-hidden="true">' + uiIcon('search', 18) + '</span>' +
-      '<input class="lp-q" type="search" placeholder="' + (isP ? 'İl ara' : 'İlçe ara') + '" aria-label="' + (isP ? 'İl ara' : 'İlçe ara') + '" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>' +
+      '<input class="lp-q" type="search" placeholder="' + nm + ' ara" aria-label="' + nm + ' ara" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>' +
       '<ul class="lp-list" id="lpList"></ul><p class="lp-empty" id="lpEmpty" hidden>Sonuç bulunamadı.</p>', kind);
     fill('');
   }
-  function items() { return S.view === 'prov' ? data.il : data.il[S.prov].d; }
+  // Mahalle listesi: ilin dosyası gelene kadar kısa bir bekleme; olmazsa ilçe konumuyla devam edilebilir
+  function mahLoading() {
+    var p = data.il[S.prov], d = p.d[S.dist], pn = p.n, dn = d.n, tok = ++S.mtok;
+    show(head('Mahalle seç', esc(dn + ' · ' + pn), true) + '<p class="lp-empty" role="status">Mahalleler yükleniyor…</p>', 'mah-wait');
+    loadMah(pn).then(function (dd) {
+      if (tok !== S.mtok || S.view !== 'mah-wait') return;
+      S.mlist = dd[dn] || [];
+      if (!S.mlist.length) { mahFail('Bu ilçe için mahalle verisi yok. İlçe konumunu kullanabilirsin.'); return; }
+      list('mah');
+    }).catch(function () { if (tok === S.mtok && S.view === 'mah-wait') mahFail('Mahalle listesi yüklenemedi (çevrimdışı olabilirsin). İlçe konumunu kullanabilirsin.'); });
+  }
+  function mahFail(msg) {
+    show(head('Mahalle seç', esc(data.il[S.prov].d[S.dist].n), true) + '<p class="lp-empty" role="status">' + esc(msg) + '</p>', 'mah-wait');
+  }
+  function items() { return S.view === 'prov' ? data.il : S.view === 'mah' ? mahItems() : data.il[S.prov].d; }
   function fill(q) {
-    var all = items(), f = fold(q), pre = [], inn = [], sel = S.view === 'prov' ? S.prov : S.dist;
+    var all = items(), f = fold(q), pre = [], inn = [], sel = S.view === 'prov' ? S.prov : S.view === 'mah' ? S.mah : S.dist;
     all.forEach(function (x, i) {
       if (!f) pre.push(i);
       else if (x.f.indexOf(f) === 0) pre.push(i);
@@ -88,18 +116,22 @@
   function choose(i) {
     if (i < 0) return;
     if (S.view === 'prov') {
-      var changed = i !== S.prov; S.prov = i; if (changed) S.dist = -1;
+      var changed = i !== S.prov; S.prov = i; if (changed) { S.dist = -1; S.mah = -1; S.mlist = null; }
       if (S.dist < 0) list('dist'); else root();   // il seçilince doğrudan ilçe listesi: akış kısa
-    } else { S.dist = i; root(); }
+    } else if (S.view === 'mah') { S.mah = i; root(); }
+    else { if (i !== S.dist) { S.mah = -1; S.mlist = null; } S.dist = i; root(); }
   }
   // Konum nesneleri (panel ve arama çubuğu aynı biçimi kullanır): ilçe kimliği 'İl|İlçe', il kimliği 'İl'
   function distCity(p, d) { return { id: p.n + '|' + d.n, name: d.n, admin: p.n, country: '', lat: d.lat, lon: d.lon, prov: p.n, dist: d.n, dup: data.dup[d.n] > 1 ? 1 : 0 }; }
+  // Mahalle kimliği 'İl|İlçe|Mahalle'; ad "Göztepe", üst satır "Kadıköy", il "İstanbul" (eski 'İl|İlçe' kimlikleri aynen çalışır)
+  function mahCity(p, d, m) { return { id: p.n + '|' + d.n + '|' + m[0], name: m[0], admin: d.n, country: '', lat: m[1], lon: m[2], prov: p.n, dist: d.n, mah: m[0], dup: data.dup[d.n] > 1 ? 1 : 0 }; }
   function provCity(p) { return { id: p.n, name: p.n, admin: p.n, country: 'Türkiye', lat: p.lat, lon: p.lon, prov: p.n }; }
   function use() {
     if (S.prov < 0 || S.dist < 0) return;
     var p = data.il[S.prov];
+    var m = S.mah >= 0 && S.mlist ? S.mlist[S.mah] : null;
     close(true);
-    window.HD.load(distCity(p, p.d[S.dist]));
+    window.HD.load(m ? mahCity(p, p.d[S.dist], m) : distCity(p, p.d[S.dist]));
   }
 
   // ---------- Arama çubuğu için yerel arama (Türkiye il/ilçe) ----------
@@ -131,9 +163,13 @@
       document.dispatchEvent(new CustomEvent('hd2:sheet', { detail: 'loc' }));   // aynı anda tek alt panel
       S.opener = opener || null;
       var cur = window.HD.current(), pi = -1, di = -1;
+      S.mah = -1; S.mlist = null; S.mtok++;
       if (cur && cur.prov) { pi = provIndex(cur.prov); if (pi >= 0) di = distIndex(pi, cur.dist); }
       else if (cur && cur.country === 'Türkiye' && cur.admin) pi = provIndex(cur.admin);   // aramayla bulunan Türkiye şehri: ili önceden seçili
       S.prov = pi; S.dist = di;
+      if (di >= 0 && cur.mah) {   // açık mahalle seçiliyse kutu önceden dolu gelsin (veri gelirse)
+        loadMah(cur.prov).then(function (dd) { var l = dd[cur.dist] || [], k; for (k = 0; k < l.length; k++) if (l[k][0] === cur.mah) { if (S.view === 'root' && S.prov === pi && S.dist === di && S.mah < 0) { S.mlist = l; S.mah = k; root(); } return; } }).catch(function () {});
+      }
       root();
       clearTimeout(closeT);   // kapanırken hemen yeniden açılırsa eski zamanlayıcı paneli gizlemesin
       if (wrap.hidden || !wrap.classList.contains('open')) {
@@ -197,5 +233,5 @@
     grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
   })();
 
-  window.HDPlaces = { open: open, fold: fold, load: load, search: search, _data: function () { return data; } };
+  window.HDPlaces = { open: open, fold: fold, load: load, search: search, loadMah: loadMah, mahCity: mahCity, _data: function () { return data; } };
 })();

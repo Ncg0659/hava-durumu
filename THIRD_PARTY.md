@@ -31,7 +31,7 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 - **Kaynak:** [osadikoglu/turkey-admin-units-osm](https://github.com/osadikoglu/turkey-admin-units-osm) sürüm `osm-2026-09-13` (`admin-tr.csv`; SHA-256 yayıncının SHA256SUMS listesiyle doğrulandı). Bu veri tabanı OpenStreetMap'ten (Geofabrik Türkiye özeti 2026-09-13) türetilmiştir.
 - **Lisans:** © OpenStreetMap katkıcıları, **ODbL 1.0**. `locations-tr.json` türev veri tabanı olduğu için aynı lisansla ve atıfla paylaşılır; atıf uygulama altbilgisinde ve dosyanın `src` alanında vardır. Tam metin ve ayrıntı: `licenses/ODbL-1.0.txt`, `licenses/locations-tr-NOTICE.md`. Uygulamanın kendi kodu bu lisansa tabi değildir.
 - **Doğrulama:** Çayeli ve Akçakoca merkez koordinatları Open-Meteo geocoder'ıyla karşılaştırıldı (fark ≈ 200 m); her ilçenin ilinden uzaklığı makul sınırlar içinde.
-- **Üretim:** `node tools/build_locations.mjs admin-tr.csv locations-tr.json` (yalnızca il/ilçe/lat/lon alınır, Türkçe alfabe sırası). Arama çubuğu da bu veriyi kullanır (Türkiye il/ilçe yerelden, dünya Open-Meteo geocoder). Mahalle ve köy alınmaz.
+- **Üretim:** `node tools/build_locations.mjs admin-tr.csv locations-tr.json` (yalnızca il/ilçe/lat/lon alınır, Türkçe alfabe sırası). Arama çubuğu da bu veriyi kullanır (Türkiye il/ilçe yerelden, dünya Open-Meteo geocoder). Mahalle verisi ayrı, il bazlı dosyalardadır (aşağıda); köy alınmaz.
 - `places.js`: seçim paneli (bu projede yazıldı; üçüncü taraf kod yok). İlk kullanımda yüklenir.
 
 ## Gelişmiş veri modülleri (hazırlık; arayüzde kapalı)
@@ -40,3 +40,10 @@ Tüm servisler ücretsizdir; API anahtarı gerekmez; yapay zekâ servisi kullan�
 ## Marka (EYRIVO)
 - **Sembol:** 3 eğik bant; bu projede çizilmiş özgün, düz çokgenlerden oluşan bir çalışmadır. Başka bir logodan kopyalanmadı. Kaynak SVG'ler `brand/` klasöründedir; PNG ikonlar ve iPhone açılış görselleri `python3 tools/make_brand.py` ile üretilir.
 - **Yazı (EYRIVO):** Inter SemiBold harf konturlarından çıkarılmış SVG yolu. Inter, SIL Open Font License 1.1 ile lisanslıdır; metin ve telif notu: `licenses/Inter-OFL-NOTICE.md`.
+
+## 0.7.1 — Mahalle verisi (`mah/*.json`)
+- **Veri:** 81 il için ayrı dosya (`mah/<il>.json`, toplam 13.793 mahalle, ≈404 KB; en büyüğü İzmir/Ankara/İstanbul ≈30 KB). Her kayıt: mahalle adı + merkez enlem/boylam (4 ondalık ≈ 11 m). Açılışta indirilmez; kullanıcı bir ilçenin "Mahalle" satırına dokununca yalnızca o ilin dosyası istenir ve Service Worker önbelleğine girer.
+- **Kaynak:** aynı yayın (`osm-2026-09-13`, `admin-tr.csv`, SHA-256 `4443454376eb72c3be9be4d50376f56937a386fd0d5badf2c88cda10e7ff4d44`, yayıncının SHA256SUMS listesiyle doğrulandı). Yalnızca `level=mahalle` satırları (OSM `admin_level=8` poligonunun merkezi); "Mahallesi" son eki atılır; aynı ilçede aynı ad tekrar ederse "Ad (2)" yazılır.
+- **Not:** "mahalle" veri biçimidir (8. düzey sınır poligonu); büyükşehir dışında köy olabilir. Merkez, poligon ağırlık merkezidir; 225 kayıtta poligonun dışına düşebilir (kaynak README'si).
+- **Lisans:** © OpenStreetMap katkıcıları, **ODbL 1.0** (türev veri tabanı; aynı lisans ve atıfla). Ayrıntı: `licenses/locations-tr-NOTICE.md`.
+- **Üretim:** `node tools/build_mahalle.mjs admin-tr.csv mah`.
