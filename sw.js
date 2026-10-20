@@ -11,12 +11,12 @@
    değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
    Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
 'use strict';
-var BUILD = '09bbf949';
+var BUILD = 'cc9d4063';
 var PREFIX = 'hd2-shell-';
 var CACHE = PREFIX + BUILD;
 var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'daily.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png',
-  'icons/apple-touch-icon.png', 'icons/favicon-32.png', 'icons/favicon-64.png', 'icons/badge-96.png'];
+  'icons/icon-192.png?v=0.7.2', 'icons/icon-512.png?v=0.7.2', 'icons/icon-maskable-192.png?v=0.7.2', 'icons/icon-maskable-512.png?v=0.7.2',
+  'icons/apple-touch-icon.png?v=0.7.2', 'icons/favicon-32.png?v=0.7.2', 'icons/favicon-64.png?v=0.7.2', 'icons/badge-96.png?v=0.7.2'];
 var LAZY = /\/(vendor\/maplibre\/[^/]+|mah\/[^/]+\.json|mapview\.js|maplayers\.js|advanced\.js)$/;   // ilk kullanımda önbelleğe girer
 
 function scopeUrl(p) { return new URL(p, self.registration.scope).href; }
@@ -82,7 +82,7 @@ if (typeof self !== 'undefined' && self.addEventListener) {
     var d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = {}; }
     e.waitUntil(self.registration.showNotification(d.title || 'EYRIVO', {
       body: d.body || '', tag: d.tag || undefined, lang: 'tr',
-      icon: scopeUrl('icons/icon-192.png'), badge: scopeUrl('icons/badge-96.png'),
+      icon: scopeUrl('icons/icon-192.png?v=0.7.2'), badge: scopeUrl('icons/badge-96.png?v=0.7.2'),
       data: { url: d.url || self.registration.scope }
     }));
   });

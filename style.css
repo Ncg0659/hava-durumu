@@ -1,4 +1,5 @@
 :root {
+  --div: rgba(255, 255, 255, .16);
   --ink: #fff;
   --ink-2: rgba(255, 255, 255, .86);
   --ink-3: rgba(255, 255, 255, .74);
@@ -210,28 +211,32 @@ button.dy:active { background: rgba(255, 255, 255, .08); }
 
 /* ---------- Hareketli ikonlar (sadece .anim; sakin, düşük güçlü: yalnızca transform/opacity; prefers-reduced-motion'da kapalı) ---------- */
 .ic { display: block; flex: none; overflow: visible; }
-.motion .ic.anim .spin { animation: spin 60s linear infinite; }
-.motion .ic.anim .core { transform-box: fill-box; transform-origin: center; animation: sunbreath 7s ease-in-out infinite alternate; }
-.motion .ic.anim .cf { animation: float 9s ease-in-out infinite alternate; }
-.motion .ic.anim .cf:nth-of-type(2n) { animation-duration: 11s; animation-delay: -3s; }
-.motion .ic.anim .drop { animation: drop 1.9s cubic-bezier(.4, 0, .6, 1) infinite; }
-.motion .ic.anim .drop:nth-of-type(2n) { animation-duration: 2.3s; }
-.motion .ic.anim .flake { animation: flake 5.5s ease-in-out infinite; }
-.motion .ic.anim .flake:nth-of-type(2n) { animation-duration: 6.5s; animation-name: flake2; }
-.motion .ic.anim .flash { animation: bolt 5s infinite; }
+/* 0.7.2: her hava tipi 2–3 sn içinde fark edilir ama sakin; yalnızca transform/opacity */
+.motion .ic.anim .spin { animation: spin 48s linear infinite; }
+.motion .ic.anim .core { transform-box: fill-box; transform-origin: center; animation: sunbreath 5s ease-in-out infinite alternate; }
+.motion .ic.anim .sunmv { animation: sunmove 8s ease-in-out infinite alternate; }
+.motion .ic.anim .cf-a { animation: driftA 13s ease-in-out infinite alternate; }
+.motion .ic.anim .cf-b { animation: driftB 9s ease-in-out infinite alternate; }
+.motion .ic.anim .drop { animation: drop 1.7s cubic-bezier(.4, 0, .6, 1) infinite; }
+.motion .ic.anim .drop:nth-of-type(2n) { animation-duration: 2.1s; }
+.motion .ic.anim .flake { animation: flake 6s ease-in-out infinite; }
+.motion .ic.anim .flake:nth-of-type(2n) { animation-duration: 7.5s; animation-name: flake2; }
+.motion .ic.anim .flash { animation: bolt 7s ease-in-out infinite; }
 .motion .ic.anim .tw { animation: twinkle 5s ease-in-out infinite; }
-.motion .ic.anim .mist { animation: mistdrift 9s ease-in-out infinite alternate; }
-.motion .ic.anim .mist line:nth-child(2) { animation: mistdrift 11s ease-in-out -4s infinite alternate-reverse; }
-.motion .ic.anim .mist line:nth-child(3) { animation: mistdrift 10s ease-in-out -2s infinite alternate; }
+.motion .ic.anim .m1 { animation: mistA 8s ease-in-out infinite alternate; }
+.motion .ic.anim .m2 { animation: mistB 12s ease-in-out infinite alternate; }
 html.hid .ic.anim * { animation-play-state: paused !important; }   /* sekme arka plandayken ikonlar durur */
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes sunbreath { from { transform: scale(1); } to { transform: scale(1.045); } }
-@keyframes float { from { transform: translate(-1.5px, .5px); } to { transform: translate(2.5px, -1px); } }
-@keyframes mistdrift { from { transform: translateX(-2px); opacity: .75; } to { transform: translateX(3px); opacity: 1; } }
-@keyframes drop { 0% { transform: translateY(-4px); opacity: 0; } 25% { opacity: .95; } 100% { transform: translateY(9px); opacity: 0; } }
-@keyframes flake { 0% { transform: translate(0, -3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(3px, 9px); opacity: 0; } }
-@keyframes flake2 { 0% { transform: translate(0, -3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(-3px, 9px); opacity: 0; } }
-@keyframes bolt { 0%, 55%, 100% { opacity: 1; } 58% { opacity: .3; } 61% { opacity: 1; } 64% { opacity: .55; } 67% { opacity: 1; } }
+@keyframes sunbreath { from { transform: scale(1); } to { transform: scale(1.09); } }
+@keyframes sunmove { from { transform: translate(-2px, 1px); } to { transform: translate(2.5px, -1.5px); } }
+@keyframes driftA { from { transform: translateX(-4px); } to { transform: translateX(5px); } }
+@keyframes driftB { from { transform: translate(4px, 1px); } to { transform: translate(-4px, -1px); } }
+@keyframes mistA { from { transform: translateX(-5px); opacity: .7; } to { transform: translateX(5px); opacity: 1; } }
+@keyframes mistB { from { transform: translateX(6px); opacity: 1; } to { transform: translateX(-6px); opacity: .7; } }
+@keyframes drop { 0% { transform: translateY(-3px); opacity: 0; } 25% { opacity: .95; } 100% { transform: translateY(11px); opacity: 0; } }
+@keyframes flake { 0% { transform: translate(-1px, -3px); opacity: 0; } 30% { opacity: .9; } 100% { transform: translate(4px, 11px); opacity: 0; } }
+@keyframes flake2 { 0% { transform: translate(1px, -3px); opacity: 0; } 30% { opacity: .9; } 100% { transform: translate(-4px, 11px); opacity: 0; } }
+@keyframes bolt { 0%, 82%, 100% { opacity: .62; } 87% { opacity: 1; } 93% { opacity: .78; } }
 
 .foot { margin-top: 22px; text-align: center; font-size: 13px; color: var(--ink-3); }
 .foot a { color: var(--ink-2); text-underline-offset: 3px; }
@@ -263,6 +268,7 @@ html.hid .ic.anim * { animation-play-state: paused !important; }   /* sekme arka
 /* Bugün: özet + aktiviteler */
 .digest { font-size: 15.5px; line-height: 1.55; color: var(--ink); }
 .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.acts > .act:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* 0.7.2: tek kalan son kart iki sütunu kaplar */
 .act { display: flex; gap: 9px; align-items: flex-start; padding: 9px 10px; border-radius: 16px; background: rgba(255, 255, 255, .1); min-width: 0; }
 .act-i { flex: none; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 12px; background: rgba(255, 255, 255, .16); color: var(--ink); }
 .act-b { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
@@ -364,7 +370,9 @@ html.lock, html.lock body { overflow: hidden; }
 .sh-title { flex: 1; text-align: center; min-width: 0; }
 .sh-title h2 { font-size: 19px; font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sh-title p { font-size: 13px; color: var(--ink-3); }
-.sh-nav, .sh-x { flex: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .12); }
+.sh-nav, .sh-x { position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .12); }
+.sh-nav::after, .sh-x::after { content: ""; position: absolute; inset: -8px; }   /* görünen daire küçük, dokunma alanı 44px */
+.sh-nav svg, .sh-x svg { width: 15px; height: 15px; }
 .sh-nav:disabled { opacity: .3; cursor: default; }
 .sh-x { margin-left: 4px; }
 .sh-now { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
@@ -522,7 +530,19 @@ html.lock, html.lock body { overflow: hidden; }
 .sh-tile.dt-link { cursor: pointer; }
 .sh-tile.dt-link > span::after { content: "›"; margin-left: auto; padding-left: 8px; color: var(--ink-3); font-size: 15px; line-height: 1; }
 .dts .sh-title h2 { font-size: 19px; }
-.dt-nav { margin: 8px -16px 0; padding: 4px 16px 6px; }
+.dt-nav { padding: 4px 16px 6px; }
+.dt-navw { position: relative; margin: 8px -16px 0; }
+.dt-navw::before, .dt-navw::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 1; }
+.dt-navw::before { left: 0; background: linear-gradient(90deg, #12263f, transparent); }
+.dt-navw::after { right: 0; background: linear-gradient(270deg, #12263f, transparent); }
+.dt-navw.can-l::before, .dt-navw.can-r::after { opacity: 1; }
+.dt-arr { position: absolute; top: 5px; z-index: 2; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink); background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-appearance: none; appearance: none; padding: 0; -webkit-tap-highlight-color: transparent; }
+.dt-arr[hidden] { display: none; }
+.dt-arr::after { content: ""; position: absolute; inset: -4px; }
+.dt-arr svg { width: 14px; height: 14px; }
+.dt-arr.l { left: 4px; }
+.dt-arr.r { right: 4px; }
+.dt-arr:active { background: rgba(255, 255, 255, .26); }
 .dt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .dt-big { min-width: 0; }
 .dt-big b { display: block; font-size: 44px; font-weight: 400; line-height: 1.1; letter-spacing: -.03em; font-variant-numeric: proportional-nums; }
@@ -702,13 +722,23 @@ html.lock, html.lock body { overflow: hidden; }
 .lf-bar i { display: block; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #ff9a8f, #ffd25e 50%, #6ee7a3); background-size: 100vw 100%; }
 .lf-why { margin: 4px 0 0; padding: 0; display: grid; gap: 3px; font-size: 13.5px; color: var(--ink-2); }
 .lf-why li::before { content: "• "; color: var(--ink-3); }
-.lf-acts { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; }
-.lf-acts li { display: grid; grid-template-columns: 1fr auto; gap: 1px 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, .1); }
+/* Aktivite endeksleri (0.7.2): [ikon alanı] | ad + açıklama … puan — tüm satırlar aynı 3 sütunlu grid */
+.lf-acts { display: grid; gap: 0; margin: 6px 0 0; padding: 0; }
+.lf-acts li { display: grid; grid-template-columns: 40px 1px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; min-height: 58px; padding: 9px 0; border-top: 1px solid var(--div); }
 .lf-acts li:first-child { border-top: 0; }
-.lf-n { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; min-width: 0; }
-.lf-acts b { font-size: 15px; font-variant-numeric: tabular-nums; }
-.lf-acts small { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2); }
+.lf-i { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 13px; background: rgba(255, 255, 255, .12); color: var(--ink); }
+.lf-d { align-self: stretch; width: 1px; margin: 4px 0; background: var(--div); }
+.lf-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lf-n { font-size: 15px; font-weight: 650; line-height: 1.25; color: var(--ink); }
+.lf-acts b { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; min-width: 3.2ch; }
+.lf-acts small { font-size: 12.5px; line-height: 1.3; color: var(--ink-3); }
 .lf-acts li.off { opacity: .62; }
+.lf-ph { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 0; align-items: center; }
+.lf-paw { flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(255, 255, 255, .16); color: #fff; }
+.lf-paw svg { width: 28px; height: 28px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; }
+.lf-pet .lf-ph h3 { margin: 0; font-size: 16px; font-weight: 650; color: var(--ink); line-height: 1.25; }
+.lf-ps { grid-column: 2; margin: 2px 0 0; font-size: 13px; line-height: 1.35; color: var(--ink-3); }
+.lf-pn { margin-top: 10px; font-size: 11.5px; line-height: 1.35; }
 .lf-pet.l1 { box-shadow: inset 3px 0 0 #ffd25e; }
 .lf-pet.l2 { box-shadow: inset 3px 0 0 #ff9a8f; }
 @media (max-width: 345px) { .cf-n b { font-size: 21px; } .cf-t { font-size: 13.5px; } }

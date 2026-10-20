@@ -22,8 +22,9 @@
       return '<circle class="tw" style="animation-delay:' + (i * 0.7) + 's" cx="' + p[0] + '" cy="' + p[1] + '" r="1.6" fill="#fff"/>';
     }).join('');
   }
-  function cloud(tx, ty, s, fill) {
-    return '<g class="cf" ><g transform="translate(' + tx + ' ' + ty + ') scale(' + s + ')" fill="' + fill + '">' +
+  // layer: 'a' = arka bulut (yavaş, geniş salınım), 'b' = ön bulut (farklı hız, ters yön) → katmanlar birbirine göre kayar
+  function cloud(tx, ty, s, fill, layer) {
+    return '<g class="cf cf-' + (layer || 'b') + '"><g transform="translate(' + tx + ' ' + ty + ') scale(' + s + ')" fill="' + fill + '">' +
       '<circle cx="22" cy="35" r="9"/><circle cx="33" cy="29" r="13"/><circle cx="45" cy="35" r="9"/>' +
       '<rect x="22" y="35" width="23" height="9" rx="4.5"/></g></g>';
   }
@@ -50,14 +51,15 @@
         return day ? sun(32, 32, 1.05)
           : moon(32, 32, 1.05) + stars([[12, 14], [52, 12], [50, 50]]);
       case 'partly':
-        return (day ? sun(24, 24, 0.8) : moon(23, 23, 0.85) + stars([[48, 12]])) + cloud(8, 10, 0.95, LIGHT);
+        return '<g class="sunmv">' + (day ? sun(24, 24, 0.8) : moon(23, 23, 0.85) + stars([[48, 12]])) + '</g>' + cloud(8, 10, 0.95, LIGHT, 'b');
       case 'cloudy':
-        return cloud(-2, 2, 0.8, GREY) + cloud(8, 12, 0.95, LIGHT);
+        return cloud(-2, 2, 0.8, GREY, 'a') + cloud(8, 12, 0.95, LIGHT, 'b');
       case 'overcast':
-        return cloud(-2, 2, 0.85, DARK) + cloud(8, 12, 0.95, GREY);
+        return cloud(-2, 2, 0.85, DARK, 'a') + cloud(8, 12, 0.95, GREY, 'b');
       case 'fog':
         return cloud(3, 0, 0.95, LIGHT) +
-          '<g class="mist" stroke="#DCE5EC" stroke-width="3" stroke-linecap="round"><line x1="14" y1="48" x2="46" y2="48"/><line x1="20" y1="54" x2="52" y2="54"/><line x1="12" y1="60" x2="38" y2="60"/></g>';
+          '<g class="mist m1" stroke="#DCE5EC" stroke-width="3" stroke-linecap="round"><line x1="14" y1="48" x2="46" y2="48"/><line x1="12" y1="60" x2="38" y2="60"/></g>' +
+          '<g class="mist m2" stroke="#DCE5EC" stroke-width="3" stroke-linecap="round"><line x1="20" y1="54" x2="52" y2="54"/></g>';
       case 'drizzle':
         return cloud(3, -2, 0.95, LIGHT) + drops([24, 34, 44], 47, '#7CCBFF');
       case 'rain':

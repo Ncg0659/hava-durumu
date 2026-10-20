@@ -63,10 +63,11 @@
       '<div class="lf-bar" role="img" aria-label="Konfor ' + cf.score + '/10"><i style="width:' + cf.score * 10 + '%"></i></div><ul class="lf-why">' + cf.reasons.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>' +
       (cf.estimated ? '<p class="hint">Hissedilen sıcaklık verisi yok; gerçek sıcaklıkla tahmin edildi.</p>' : '') + '</section>');
     if (acts.length) out.push('<section class="dt-box lf-box" aria-label="Aktivite endeksleri"><h3>Aktivite endeksleri</h3><ul class="lf-acts">' + acts.map(function (a) {
-      return '<li class="' + (a.blocked ? 'off' : '') + '"><span class="lf-n">' + C.uiIcon(a.icon, 18) + esc(a.name) + '</span><b>' + a.score + '/10</b><small>' + esc(a.why) + '</small></li>';
+      return '<li class="' + (a.blocked ? 'off' : '') + '"><span class="lf-i">' + C.uiIcon(a.icon, 22) + '</span><span class="lf-d" aria-hidden="true"></span><span class="lf-t"><span class="lf-n">' + esc(a.name) + '</span><small>' + esc(a.why) + '</small></span><b>' + a.score + '/10</b></li>';
     }).join('') + '</ul></section>');
     if (ot && ot.text) out.push('<section class="dt-box lf-box" aria-label="Giyim"><h3>Ne giymeli?</h3><p class="dt-s">' + esc(ot.text) + '</p></section>');
-    if (pt) out.push('<section class="dt-box lf-box lf-pet l' + pt.level + '" aria-label="Evcil hayvan konforu"><h3>' + esc(pt.title) + '</h3><ul class="lf-why">' + pt.reasons.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul><p class="hint">' + esc(pt.note) + '</p></section>');
+    if (pt) out.push('<section class="dt-box lf-box lf-pet l' + pt.level + '" aria-label="Evcil hayvan konforu"><div class="lf-ph"><span class="lf-paw">' + C.uiIcon('dog', 26) + '</span><h3>' + esc(String(pt.title).replace(/^🐾\s*/, '')) + '</h3>' +
+      (pt.reasons && pt.reasons.length ? '<p class="lf-ps">' + esc(pt.reasons.join(', ')) + '</p>' : '') + '</div><p class="hint lf-pn">' + esc(pt.note) + '</p></section>');
     out.push('<p class="hint">Bu değerlendirmeler Open-Meteo verisinden sabit kurallarla hesaplanır; tahmindir, tıbbi ya da veterinerlik tavsiyesi değildir.</p>');
     return out.join('');
   }
@@ -559,7 +560,21 @@
     C.$('dtTitle').textContent = def[2];
     C.$('dtSub').textContent = st().city ? st().city.name : '';
     C.$('dtNav').innerHTML = navHtml();
+    navArrows();
     paintHour(); paintClim();
+  }
+  // Sekme şeridi okları (0.7.2): gizli sekme olan yönde yarı saydam ‹ / › görünür; uçlarda gizlenir
+  function navArrows() {
+    var nv = C.$('dtNav'), l = C.$('dtArrL'), r = C.$('dtArrR'); if (!nv || !l || !r) return;
+    var max = nv.scrollWidth - nv.clientWidth, x = nv.scrollLeft, showL = max > 4 && x > 4, showR = max > 4 && x < max - 4;
+    [[l, showL], [r, showR]].forEach(function (a) { a[0].hidden = !a[1]; a[0].tabIndex = a[1] ? 0 : -1; });
+    var w = C.$('dtNavW'); if (w) { w.classList.toggle('can-l', showL); w.classList.toggle('can-r', showR); }
+  }
+  function centerTab(instant) {
+    var nv = C.$('dtNav'), f = nv && nv.querySelector('.hr-tab.on'); if (!f) return;
+    var max = nv.scrollWidth - nv.clientWidth, to = Math.max(0, Math.min(max, f.offsetLeft - (nv.clientWidth - f.offsetWidth) / 2));
+    if (instant || C.reduceMotion() || !nv.scrollTo) nv.scrollLeft = to; else nv.scrollTo({ left: to, behavior: 'smooth' });
+    navArrows();
   }
   function open(tab, opener, time) {
     if (!dat() || !dat().hourly || !C.$('dtSheet')) return;
@@ -568,15 +583,19 @@
     P.cityId = C.cityId(st().city); if (opener) P.opener = opener;
     var w = win(); P.time = time && H().time.indexOf(time) >= 0 ? time : H().time[w[0]];
     P.body.innerHTML = '<header class="sh-head"><div class="sh-title"><h2 id="dtTitle"></h2><p id="dtSub"></p></div><button type="button" class="sh-x" data-close aria-label="Kapat">' + C.uiIcon('close', 20) + '</button></header>' +
-      '<div class="hr-tabs dt-nav" id="dtNav" role="tablist" aria-label="Ayrıntı seç"></div><div id="dtHead"></div><div id="dtLead"></div><div id="dtCharts"></div><div id="dtBody"></div><div id="dtClim"></div>';
+      '<div class="dt-navw" id="dtNavW"><button type="button" class="dt-arr l" id="dtArrL" data-arr="-1" aria-label="Önceki sekmeler" hidden tabindex="-1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>' +
+      '<div class="hr-tabs dt-nav" id="dtNav" role="tablist" aria-label="Ayrıntı seç"></div>' +
+      '<button type="button" class="dt-arr r" id="dtArrR" data-arr="1" aria-label="Sonraki sekmeler" hidden tabindex="-1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div><div id="dtHead"></div><div id="dtLead"></div><div id="dtCharts"></div><div id="dtBody"></div><div id="dtClim"></div>';
     paintAll();
+    C.$('dtNav').addEventListener('scroll', navArrows, { passive: true });
     if (P.wrap.hidden) {
       P.wrap.hidden = false; void P.wrap.offsetWidth; P.wrap.classList.add('open'); P.open = true;
       document.documentElement.classList.add('lock');
       C.app.setAttribute('aria-hidden', 'true'); if ('inert' in C.app) C.app.inert = true;
     } else P.open = true;
     P.wrap.querySelector('.sheet').scrollTop = 0;
-    var f = P.wrap.querySelector('.hr-tab.on'); if (f) { f.focus({ preventScroll: true }); var nv = C.$('dtNav'); nv.scrollLeft = f.offsetLeft - (nv.clientWidth - f.offsetWidth) / 2; }
+    var f = P.wrap.querySelector('.hr-tab.on'); if (f) { f.focus({ preventScroll: true }); centerTab(true); }
+    navArrows();
     ensureClimate();
   }
   document.addEventListener('hd2:sheet', function (e) { if (e.detail !== 'dt') close(true); });
@@ -604,11 +623,14 @@
   function bind() {
     P.wrap.addEventListener('click', function (e) {
       if (e.target.closest('[data-close]') || e.target.classList.contains('sheet-bg')) { close(); return; }
+      var ar = e.target.closest('.dt-arr');
+      if (ar) { var nv0 = C.$('dtNav'), dx = (+ar.dataset.arr) * Math.max(120, Math.round(nv0.clientWidth * 0.7)); if (C.reduceMotion() || !nv0.scrollBy) nv0.scrollLeft += dx; else nv0.scrollBy({ left: dx, behavior: 'smooth' }); setTimeout(navArrows, 60); return; }
       var tb = e.target.closest('.hr-tab');
-      if (tb) { P.tab = tb.dataset.tab; paintAll(); var nt = P.wrap.querySelector('.hr-tab.on'); if (nt) nt.focus({ preventScroll: true }); ensureClimate(); return; }
+      if (tb) { P.tab = tb.dataset.tab; paintAll(); var nt = P.wrap.querySelector('.hr-tab.on'); if (nt) { nt.focus({ preventScroll: true }); centerTab(false); } ensureClimate(); return; }
       var sb = e.target.closest('.dt-step'); if (sb) { step(+sb.dataset.step); return; }
       var dr = e.target.closest('.dr-h'); if (dr) { choose(dr.dataset.t); var nb = P.wrap.querySelector('.dr-h.on'); if (nb) nb.focus({ preventScroll: true }); return; }
     });
+    window.addEventListener('resize', function () { if (P.open) navArrows(); });
     var drag = false;
     function pickFromChart(e) {
       var svg = e.target.closest && e.target.closest('.hr-chart'); if (!svg) return;
