@@ -67,8 +67,8 @@
     }).join('') + '</ul></section>');
     if (ot && ot.text) out.push('<section class="dt-box lf-box" aria-label="Giyim"><h3>Ne giymeli?</h3><p class="dt-s">' + esc(ot.text) + '</p></section>');
     if (pt) out.push('<section class="dt-box lf-box lf-pet l' + pt.level + '" aria-label="Evcil hayvan konforu"><div class="lf-ph"><span class="lf-paw">' + C.uiIcon('dog', 26) + '</span><h3>' + esc(String(pt.title).replace(/^🐾\s*/, '')) + '</h3>' +
-      (pt.reasons && pt.reasons.length ? '<p class="lf-ps">' + esc(pt.reasons.join(', ')) + '</p>' : '') + '</div><p class="hint lf-pn">' + esc(pt.note) + '</p></section>');
-    out.push('<p class="hint">Bu değerlendirmeler Open-Meteo verisinden sabit kurallarla hesaplanır; tahmindir, tıbbi ya da veterinerlik tavsiyesi değildir.</p>');
+      (pt.reasons && pt.reasons.length ? '<p class="lf-ps">' + esc(pt.reasons.join(', ')) + '</p>' : '') + '</div></section>');
+    out.push('<p class="hint lf-foot">Yaşam değerlendirmeleri hava verisinden türetilen tahmini göstergelerdir; sağlık/veteriner tavsiyesi değildir.</p>');
     return out.join('');
   }
   function availTabs() { return TABS.filter(function (t) { return avail(t[0]); }); }
@@ -567,11 +567,15 @@
   function navArrows() {
     var nv = C.$('dtNav'), l = C.$('dtArrL'), r = C.$('dtArrR'); if (!nv || !l || !r) return;
     var max = nv.scrollWidth - nv.clientWidth, x = nv.scrollLeft, showL = max > 4 && x > 4, showR = max > 4 && x < max - 4;
-    [[l, showL], [r, showR]].forEach(function (a) { a[0].hidden = !a[1]; a[0].tabIndex = a[1] ? 0 : -1; });
-    var w = C.$('dtNavW'); if (w) { w.classList.toggle('can-l', showL); w.classList.toggle('can-r', showR); }
+    [[l, showL], [r, showR]].forEach(function (a) { a[0].tabIndex = a[1] ? 0 : -1; });
+    var w = C.$('dtNavW'); if (w) { w.classList.toggle('can-l', showL); w.classList.toggle('can-r', showR); w.classList.toggle('noscroll', max <= 4); }
+    var x0 = nv.scrollLeft, x1 = x0 + nv.clientWidth;
+    [].forEach.call(nv.querySelectorAll('.hr-tab'), function (t) { var a = t.offsetLeft, b = a + t.offsetWidth; t.classList.toggle('cut', max > 4 && (a < x0 - 1 || b > x1 + 1)); });   // kısmen görünen sekme tamamen gizlenir
+    [l, r].forEach(function (a, i) { a.style.visibility = (i ? showR : showL) ? 'visible' : 'hidden'; });   // yer ayrılır (şerit kaymaz), gizliyken tıklanmaz
   }
   function centerTab(instant) {
     var nv = C.$('dtNav'), f = nv && nv.querySelector('.hr-tab.on'); if (!f) return;
+    navArrows(); void nv.offsetWidth;   // oklar yer ayırdıktan sonra (şerit daralır) ölç
     var max = nv.scrollWidth - nv.clientWidth, to = Math.max(0, Math.min(max, f.offsetLeft - (nv.clientWidth - f.offsetWidth) / 2));
     if (instant || C.reduceMotion() || !nv.scrollTo) nv.scrollLeft = to; else nv.scrollTo({ left: to, behavior: 'smooth' });
     navArrows();
@@ -583,9 +587,9 @@
     P.cityId = C.cityId(st().city); if (opener) P.opener = opener;
     var w = win(); P.time = time && H().time.indexOf(time) >= 0 ? time : H().time[w[0]];
     P.body.innerHTML = '<header class="sh-head"><div class="sh-title"><h2 id="dtTitle"></h2><p id="dtSub"></p></div><button type="button" class="sh-x" data-close aria-label="Kapat">' + C.uiIcon('close', 20) + '</button></header>' +
-      '<div class="dt-navw" id="dtNavW"><button type="button" class="dt-arr l" id="dtArrL" data-arr="-1" aria-label="Önceki sekmeler" hidden tabindex="-1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>' +
+      '<div class="dt-navw" id="dtNavW"><button type="button" class="dt-arr l" id="dtArrL" data-arr="-1" aria-label="Önceki sekmeler" tabindex="-1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>' +
       '<div class="hr-tabs dt-nav" id="dtNav" role="tablist" aria-label="Ayrıntı seç"></div>' +
-      '<button type="button" class="dt-arr r" id="dtArrR" data-arr="1" aria-label="Sonraki sekmeler" hidden tabindex="-1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div><div id="dtHead"></div><div id="dtLead"></div><div id="dtCharts"></div><div id="dtBody"></div><div id="dtClim"></div>';
+      '<button type="button" class="dt-arr r" id="dtArrR" data-arr="1" aria-label="Sonraki sekmeler" tabindex="-1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div><div id="dtHead"></div><div id="dtLead"></div><div id="dtCharts"></div><div id="dtBody"></div><div id="dtClim"></div>';
     paintAll();
     C.$('dtNav').addEventListener('scroll', navArrows, { passive: true });
     if (P.wrap.hidden) {

@@ -70,7 +70,7 @@
     show(head('Konum seç', 'Türkiye · il, ilçe ve mahalle') +
       '<div class="lp-fields">' + row('İL', pr ? pr.n : 'İl seç', 'prov', !pr) + (pr ? row('İLÇE', ds ? ds.n : 'İlçe seç', 'dist', !ds) : '') +
       (ds ? row('MAHALLE (İSTEĞE BAĞLI)', mh || 'Mahalle seç', 'mah', !mh) : '') + '</div>' +
-      '<p class="lp-note">Türkiye dışındaki şehirler için ana ekrandaki “Şehir ara” alanını kullan.</p>' +
+      '<p class="lp-note">Türkiye dışındaki şehirler için ana ekrandaki “Şehir, ilçe veya mahalle ara” alanını kullan.</p>' +
       '<div class="lp-foot"><button type="button" class="lp-go" data-go' + (ds ? '' : ' disabled') + '>Bu konumu kullan</button></div>', 'root');
   }
   function list(kind) {
@@ -134,10 +134,86 @@
     window.HD.load(m ? mahCity(p, p.d[S.dist], m) : distCity(p, p.d[S.dist]));
   }
 
+  // ---------- Mahalle arama indeksi (0.7.3) ----------
+  // mah-index.json (yalnızca adlar, ≈60 KB gzip) ilk aramada bir kez iner; açılışta ve il seçiminde indirilmez.
+  // Koordinat indekste yok: bir mahalle seçilince yalnızca ilgili il dosyası (mah/<il>.json) istenir.
+  var DIST_PRIOR = ['Kadıköy', 'Beşiktaş', 'Üsküdar', 'Şişli', 'Fatih', 'Çankaya', 'Konak', 'Karşıyaka', 'Bornova', 'Nilüfer', 'Muratpaşa', 'Keçiören', 'Maltepe', 'Ataşehir', 'Bakırköy'];
+  var mrows = null, mrowsP = null, BIG = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep', 'Kocaeli', 'Mersin'];
+  function loadMahIndex() {
+    if (mrows) return Promise.resolve(mrows);
+    if (mrowsP) return mrowsP;
+    if (location.protocol === 'file:') return Promise.reject(new Error('file'));   // tek dosya sürümünde mahalle verisi yok (konsol hatası üretme)
+    mrowsP = fetch('mah-index.json').then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function (j) {
+      if (!j || !j.p) throw new Error('indeks bozuk');
+      var rows = [];
+      Object.keys(j.p).forEach(function (pv) {
+        var pf = fold(pv);
+        Object.keys(j.p[pv]).forEach(function (ds) {
+          var df = fold(ds), seen = {};
+          j.p[pv][ds].forEach(function (mn) { if (seen[mn]) return; seen[mn] = 1; rows.push({ n: mn, f: fold(mn), d: ds, df: df, p: pv, pf: pf, ctx: ' ' + df + ' ' + pf }); });
+        });
+      });
+      mrows = rows; return rows;
+    });
+    mrowsP.catch(function () { mrowsP = null; });   // hata kalıcı olmasın (çevrimdışı iken sonra tekrar denenir)
+    return mrowsP;
+  }
+  function ctxOk(r, toks) {   // bağlam sözcüklerinin her biri ilçe/il adındaki bir sözcüğün başı olmalı
+    var i, t, ok;
+    for (i = 0; i < toks.length; i++) { t = toks[i]; ok = r.ctx.indexOf(' ' + t) >= 0; if (!ok) return false; }
+    return true;
+  }
+  // Sorgu (katlanmış) → mahalle eşleşmeleri: ad = sorgunun ardışık bir parçası, kalan sözcükler il/ilçe bağlamı
+  // ('göztepe', 'göztepe kadıköy', 'kadıköy göztepe', 'istanbul kadıköy göztepe'). Dönüş: {ex: tam ad eşleşmeleri, pre: ad başı eşleşmeleri}
+  function mahMatch(rows, f, hints) {
+    var toks = f.split(' '), n = toks.length, best = {}, i, j, k, r, name, ctx, kind, sc, key;
+    if (n > 6) return { ex: [], pre: [] };
+    var splits = [];
+    for (i = 0; i < n; i++) for (j = i + 1; j <= n; j++) splits.push({ name: toks.slice(i, j).join(' '), ctx: toks.slice(0, i).concat(toks.slice(j)) });
+    for (k = 0; k < rows.length; k++) {
+      r = rows[k];
+      for (i = 0; i < splits.length; i++) {
+        name = splits[i].name; ctx = splits[i].ctx;
+        if (r.f === name) kind = 0; else if (name.length >= 2 && r.f.indexOf(name) === 0) kind = 1; else continue;
+        if (ctx.length && !ctxOk(r, ctx)) continue;
+        sc = kind * 10 - ctx.length;   // tam ad önce; daha çok bağlam eşleşmesi (daha belirgin) önce
+        key = r.p + '|' + r.d + '|' + r.n;
+        if (!best[key] || sc < best[key].sc) best[key] = { r: r, sc: sc, kind: kind, nctx: ctx.length };
+      }
+    }
+    var hs = (hints || []).concat(BIG), all = Object.keys(best).map(function (k2) { return best[k2]; });
+    function pr(p) { var i = hs.indexOf(p); return i < 0 ? 999 : i; }
+    all.sort(function (a, b) {
+      if (a.sc !== b.sc) return a.sc - b.sc;
+      var ha = pr(a.r.p), hb = pr(b.r.p);   // hafif tie-break (yalnızca eşit puanda): açık şehir/favori il, sonra büyük iller; yanlış sonucu yukarı taşımaz
+      if (ha !== hb) return ha - hb;
+      var da = DIST_PRIOR.indexOf(a.r.d), db = DIST_PRIOR.indexOf(b.r.d);   // aynı ilde eşit puan: bilinen merkez ilçeler hafifçe öne
+      if (a.r.p === b.r.p && da !== db) return (da < 0 ? 999 : da) - (db < 0 ? 999 : db);
+      return a.r.p === b.r.p ? (a.r.d === b.r.d ? a.r.n.localeCompare(b.r.n, 'tr') : a.r.d.localeCompare(b.r.d, 'tr')) : a.r.p.localeCompare(b.r.p, 'tr');
+    });
+    return { ex: all.filter(function (x) { return x.kind === 0; }), pre: all.filter(function (x) { return x.kind === 1; }) };
+  }
+  function mahResult(x) {   // koordinatsız sonuç: seçilince resolve() ile il dosyasından tamamlanır
+    var r = x.r;
+    return { id: r.p + '|' + r.d + '|' + r.n, name: r.n, admin: r.d, country: '', lat: null, lon: null, prov: r.p, dist: r.d, mah: r.n, dup: data.dup[r.d] > 1 ? 1 : 0, pend: 1 };
+  }
+  function resolve(c) {   // koordinatı olmayan mahalle sonucunu il dosyasından tamamlar; dosya yoksa/çevrimdışıysa reddeder
+    if (!c || !c.pend) return Promise.resolve(c);
+    return load().then(function () { return loadMah(c.prov); }).then(function (dd) {
+      var l = dd[c.dist] || [], k;
+      for (k = 0; k < l.length; k++) if (l[k][0] === c.mah) return mahCity({ n: c.prov }, { n: c.dist }, l[k]);
+      throw new Error('mahalle bulunamadı');
+    });
+  }
+  function mahCached(prov) {   // çevrimdışıyken: il dosyası önbellekte mi?
+    if (!window.caches || !caches.match) return Promise.resolve(false);
+    return caches.match(mahFile(prov)).then(function (h) { return !!h; }, function () { return false; });
+  }
+
   // ---------- Arama çubuğu için yerel arama (Türkiye il/ilçe) ----------
   // Sıra: 1) tam eşleşen ilçe 2) tam eşleşen il 3) adı sorguyla başlayanlar (önce iller) 4) diğer eşleşmeler
-  function search(q, limit) {
-    var f = fold(q); limit = limit || 7;
+  function search(q, limit, hints) {
+    var f = fold(q); limit = limit || 8;
     if (f.length < 2) return Promise.resolve([]);
     return load().then(function () {
       var t1 = [], t2 = [], t3p = [], t3d = [], t4 = [];
@@ -152,7 +228,29 @@
           else if ((f.indexOf(' ') > 0 && pd.indexOf(f) === 0) || (f.length >= 3 && d.f.indexOf(f) > 0)) t4.push(distCity(p, d));   // 'il ilçe' sırası yalnızca iki sözcük yazılınca (İstanbul yazınca tüm ilçeleri dökmesin)
         });
       });
-      return t1.concat(t2, t3p, t3d, t4).slice(0, limit);
+      function done(mm, info) {
+        // Sıra: tam ilçe → tam il (yazılan ifade bir ilçe/il adıysa) → bağlamla (il/ilçe yazılmış) tam mahalle → bağlamsız tam mahalle (≤4) → önek (il, ilçe, mahalle) → diğer.
+        // Bağlamsız yazılan bir ad aynı zamanda ilçe/il adıysa ("Kadıköy", "Çankaya") ilçe/il önce gelir; köy/mahalle eşleşmeleri hemen arkasında.
+        var ex = mm ? mm.ex : [], exC = ex.filter(function (x) { return x.nctx > 0; }).map(mahResult), exN = ex.filter(function (x) { return x.nctx === 0; }).map(mahResult);
+        var pre = mm && !t1.length && !t2.length ? mm.pre.map(mahResult) : [];   // önek mahalleleri yalnızca tam il/ilçe eşleşmesi yokken (İstanbul → İstanbulboğazı köyü dökülmez)
+        var out = t1.concat(t2, exC, exN.slice(0, 4), t3p, t3d, pre.slice(0, 3), t4), seen = {}, res = [];
+        out.forEach(function (c) { var k = c.id; if (!seen[k]) { seen[k] = 1; res.push(c); } });
+        res = res.slice(0, limit);
+        res._mahFail = !!info.fail; res._blocked = 0;
+        return res;
+      }
+      return loadMahIndex().then(function (rows) { return mahMatch(rows, f, hints); }).then(function (mm) {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {   // çevrimdışı: yalnızca il dosyası önbellekte olan mahalleler listelenir
+          var provs = {}; mm.ex.concat(mm.pre).slice(0, 40).forEach(function (x) { provs[x.r.p] = 1; });
+          return Promise.all(Object.keys(provs).map(function (pv) { return mahCached(pv).then(function (ok) { return [pv, ok]; }); })).then(function (arr) {
+            var okp = {}; arr.forEach(function (a) { okp[a[0]] = a[1]; });
+            var all = mm.ex.length + mm.pre.length;
+            mm = { ex: mm.ex.filter(function (x) { return okp[x.r.p]; }), pre: mm.pre.filter(function (x) { return okp[x.r.p]; }) };
+            var res = done(mm, {}); res._blocked = Math.max(0, all - mm.ex.length - mm.pre.length); return res;
+          });
+        }
+        return done(mm, {});
+      }, function (e) { return done(null, { fail: !(e && e.message === 'file') }); });
     });
   }
 
@@ -233,5 +331,5 @@
     grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
   })();
 
-  window.HDPlaces = { open: open, fold: fold, load: load, search: search, loadMah: loadMah, mahCity: mahCity, _data: function () { return data; } };
+  window.HDPlaces = { open: open, fold: fold, load: load, search: search, resolve: resolve, loadMahIndex: loadMahIndex, loadMah: loadMah, mahCity: mahCity, _data: function () { return data; } };
 })();

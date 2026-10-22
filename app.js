@@ -972,10 +972,26 @@
   var qs = { id: 0, q: '', local: null, world: null, worldErr: false };   // son aramanın durumu (yerel + dünya sonuçları ayrı gelir)
   function isTr(c) { return c.cc === 'TR' || c.country === 'Türkiye'; }
   function suggestSub(c) {   // ikinci satır: "İstanbul · Türkiye", "Türkiye", "England · United Kingdom"
+    if (c.mah) return [c.dist, c.prov].filter(Boolean).join(' · ');   // mahalle: "Kadıköy · İstanbul"
     return [c.admin && c.admin !== c.name ? c.admin : '', c.country || (c.prov ? 'Türkiye' : '')].filter(Boolean).join(' · ');
   }
+  var MAH_OFFLINE_MSG = 'Bu mahalle listesi çevrimdışıyken henüz kullanılamıyor.';
+  function searchHints() {   // hafif tie-break: açık şehrin ve favorilerin ili (yanlış sonucu zorla yukarı taşımaz)
+    var h = [];
+    if (state.city && state.city.prov) h.push(state.city.prov);
+    state.favs.forEach(function (f) { if (f.prov && h.indexOf(f.prov) < 0) h.push(f.prov); });
+    return h;
+  }
+  // Mahalle sonuçları koordinatsız gelir; seçilince yalnızca o ilin dosyası istenir. Dosya yoksa (çevrimdışı) sakin bir mesaj gösterilir.
+  function chooseCity(c) {
+    if (c && c.pend && window.HDPlaces) {
+      window.HDPlaces.resolve(c).then(function (full) { loadCity(full); }).catch(function () { say(MAH_OFFLINE_MSG); });
+      return;
+    }
+    loadCity(c);
+  }
   function localSearch(q) {
-    return ensurePlaces().then(function () { return window.HDPlaces.search(q, 7); }).catch(function () { return []; });
+    return ensurePlaces().then(function () { return window.HDPlaces.search(q, 8, searchHints()); }).catch(function () { return []; });
   }
   function hideSuggest() {
     qs.id++; clearTimeout(timer); if (state.geoCtl) state.geoCtl.abort();   // yoldaki arama sonuçları listeyi geri açmasın (seçim/kapatma sonrası)
@@ -998,16 +1014,22 @@
     if (items.length) { say(''); showSuggest(items); return; }
     if (qs.local === null || (qs.world === null && !qs.worldErr)) return;   // sonuçlardan biri hâlâ bekleniyor
     hideSuggest();
+    if (qs.mahMsg) { say(MAH_OFFLINE_MSG); return; }
     say(qs.worldErr ? 'Şehir araması şu an çalışmıyor. Biraz sonra tekrar dene.' : '"' + qs.q + '" için şehir bulunamadı. Yazımı kontrol et.');
   }
-  function pick(i) { var c = state.items[i]; if (!c) return; el.q.value = ''; loadCity(c); }
+  function pick(i) { var c = state.items[i]; if (!c) return; el.q.value = ''; chooseCity(c); }
   function setActive(i) {
     state.active = i;
     Array.prototype.forEach.call(el.suggest.children, function (li, k) { li.classList.toggle('act', k === i); });
     if (i >= 0) el.q.setAttribute('aria-activedescendant', 's' + i); else el.q.removeAttribute('aria-activedescendant');
   }
+  (function () {   // dar ekranda (<380 px) kısa placeholder: ana anlam (şehir, ilçe, mahalle) korunur
+    var mq = window.matchMedia && matchMedia('(max-width: 379px)');
+    function ph() { el.q.placeholder = mq && mq.matches ? 'Şehir, ilçe, mahalle ara' : 'Şehir, ilçe veya mahalle ara'; }
+    ph(); if (mq && mq.addEventListener) mq.addEventListener('change', ph);
+  })();
   var timer;
-  el.q.addEventListener('focus', function () { ensurePlaces().then(function () { return window.HDPlaces.load(); }).catch(function () { /* yazınca yeniden denenir */ }); }, { once: true });   // yerel liste yazmaya başlamadan hazır olsun
+  el.q.addEventListener('focus', function () { ensurePlaces().then(function () { return window.HDPlaces.load().then(function () { return window.HDPlaces.loadMahIndex().catch(function () { /* çevrimdışı: aramada sakin mesaj */ }); }); }).catch(function () { /* yazınca yeniden denenir */ }); }, { once: true });   // yerel liste yazmaya başlamadan hazır olsun
   // iOS adres otomatik doldurması ("Kadıköy İstanbul 34730 Türkiye") tek seferde uzun değer yazar ve bazen yalnızca 'change' tetikler.
   // Değer posta kodu/ülke ekinden arındırılır; otomatik doldurma/yapıştırma ise 300 ms beklemeden hemen işlenir.
   function cleanQuery(v) {
@@ -1020,7 +1042,7 @@
     if (q === qs.last && !el.suggest.hidden) return;   // aynı değer için input + change art arda gelirse ikinci kez işleme
     qs.last = q; id = ++qs.id;
     qs.q = q; qs.local = null; qs.world = null; qs.worldErr = false;
-    localSearch(q).then(function (r) { if (id !== qs.id) return; qs.local = r; paintSuggest(); });   // yerel sonuçlar hemen
+    localSearch(q).then(function (r) { if (id !== qs.id) return; qs.local = r; qs.mahMsg = !!(r && (r._blocked || r._mahFail) && !r.length); paintSuggest(); });   // yerel sonuçlar hemen
     function geo() {
       if (state.geoCtl) state.geoCtl.abort();
       var ctl = state.geoCtl = new AbortController();
@@ -1047,7 +1069,7 @@
     var q = cleanQuery(el.q.value);
     if (q.length < 2) return;
     localSearch(q).then(function (loc) {   // liste henüz çıkmadan Enter: önce yerel Türkiye sonucu, yoksa geocoder'ın ilk sonucu
-      if (loc.length) { el.q.value = ''; loadCity(loc[0]); return; }
+      if (loc.length) { el.q.value = ''; chooseCity(loc[0]); return; }
       return geocode(q, 12).then(function (items) {
         if (items.length) { el.q.value = ''; loadCity(items[0]); } else say('"' + q + '" için şehir bulunamadı. Yazımı kontrol et.');
       });

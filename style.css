@@ -530,19 +530,18 @@ html.lock, html.lock body { overflow: hidden; }
 .sh-tile.dt-link { cursor: pointer; }
 .sh-tile.dt-link > span::after { content: "›"; margin-left: auto; padding-left: 8px; color: var(--ink-3); font-size: 15px; line-height: 1; }
 .dts .sh-title h2 { font-size: 19px; }
-.dt-nav { padding: 4px 16px 6px; }
-.dt-navw { position: relative; margin: 8px -16px 0; }
-.dt-navw::before, .dt-navw::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 1; }
-.dt-navw::before { left: 0; background: linear-gradient(90deg, #12263f, transparent); }
-.dt-navw::after { right: 0; background: linear-gradient(270deg, #12263f, transparent); }
-.dt-navw.can-l::before, .dt-navw.can-r::after { opacity: 1; }
-.dt-arr { position: absolute; top: 5px; z-index: 2; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink); background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-appearance: none; appearance: none; padding: 0; -webkit-tap-highlight-color: transparent; }
-.dt-arr[hidden] { display: none; }
+.dt-nav { position: relative; padding: 4px 0 6px; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+/* 0.7.3: şeritte yarım sekme gösterilmez; kenarda kesilen sekme tamamen gizlenir (okun yanında parça kalmaz) */
+.dt-nav .hr-tab { transition: opacity .12s; }
+.dt-nav .hr-tab.cut { opacity: 0; pointer-events: none; }
+/* 0.7.3: oklar sekme şeridinin yanında ayrı hücrelerde; sekmelerin üstüne binmez, aralarında boşluk var */
+.dt-navw { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; }
+.dt-arr { position: relative; flex: none; width: 26px; height: 26px; margin-bottom: 2px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink-2); background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); -webkit-appearance: none; appearance: none; padding: 0; -webkit-tap-highlight-color: transparent; }
+.dt-arr[style*="hidden"] { pointer-events: none; }
+.dt-navw.noscroll .dt-arr { display: none; }
 .dt-arr::after { content: ""; position: absolute; inset: -4px; }
 .dt-arr svg { width: 14px; height: 14px; }
-.dt-arr.l { left: 4px; }
-.dt-arr.r { right: 4px; }
-.dt-arr:active { background: rgba(255, 255, 255, .26); }
+.dt-arr:active { background: rgba(255, 255, 255, .2); }
 .dt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .dt-big { min-width: 0; }
 .dt-big b { display: block; font-size: 44px; font-weight: 400; line-height: 1.1; letter-spacing: -.03em; font-variant-numeric: proportional-nums; }
@@ -734,11 +733,12 @@ html.lock, html.lock body { overflow: hidden; }
 .lf-acts small { font-size: 12.5px; line-height: 1.3; color: var(--ink-3); }
 .lf-acts li.off { opacity: .62; }
 .lf-ph { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 0; align-items: center; }
-.lf-paw { flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(255, 255, 255, .16); color: #fff; }
-.lf-paw svg { width: 28px; height: 28px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; }
+.lf-paw { flex: none; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 14px; background: rgba(255, 255, 255, .16); color: #fff; }
+.lf-paw svg { width: 26px; height: 26px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; }
 .lf-pet .lf-ph h3 { margin: 0; font-size: 16px; font-weight: 650; color: var(--ink); line-height: 1.25; }
-.lf-ps { grid-column: 2; margin: 2px 0 0; font-size: 13px; line-height: 1.35; color: var(--ink-3); }
-.lf-pn { margin-top: 10px; font-size: 11.5px; line-height: 1.35; }
+.lf-pet .lf-ps { grid-column: 2; margin: 1px 0 0; font-size: 13px; line-height: 1.3; color: var(--ink-3); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.lf-pet { padding-top: 10px; padding-bottom: 10px; }
+.lf-box ~ .lf-foot, .lf-foot { margin-top: 12px; font-size: 12px; line-height: 1.4; color: var(--ink-3); text-align: center; }
 .lf-pet.l1 { box-shadow: inset 3px 0 0 #ffd25e; }
 .lf-pet.l2 { box-shadow: inset 3px 0 0 #ff9a8f; }
 @media (max-width: 345px) { .cf-n b { font-size: 21px; } .cf-t { font-size: 13.5px; } }
