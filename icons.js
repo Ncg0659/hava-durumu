@@ -133,6 +133,7 @@
     window: '<rect x="4.500" y="3.500" width="15" height="17" rx="1.500"/><path d="M12 3.500v17M4.500 12h15"/>',
     camera: '<path d="M4 8h3l1.600-2.500h6.800L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.500"/>',
     car: '<path d="M5 16.500V12l1.800-4.500a1.500 1.500 0 0 1 1.400-1h7.600a1.500 1.500 0 0 1 1.400 1L19 12v4.500"/><path d="M3.500 16.500h17M5 12h14M7.500 16.500v2.200M16.500 16.500v2.200M7.800 14.300h.01M16.200 14.300h.01"/>',
+    pollen: '<circle cx="12" cy="12" r="2.600"/><circle cx="12" cy="5" r="1.400"/><circle cx="18.100" cy="8.500" r="1.400"/><circle cx="18.100" cy="15.500" r="1.400"/><circle cx="12" cy="19" r="1.400"/><circle cx="5.900" cy="15.500" r="1.400"/><circle cx="5.900" cy="8.500" r="1.400"/>',
     // Paket 6 (bu projede çizilmiş özgün çizgi ikonlar)
     expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
     locate: '<circle cx="12" cy="12" r="3.200"/><circle cx="12" cy="12" r="7.500"/><path d="M12 2.500v3M12 18.500v3M2.500 12h3M18.500 12h3"/>'

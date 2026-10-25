@@ -20,7 +20,7 @@
   var MIN_SPLASH = 300;        // açılış ekranı en az bu kadar (ms) görünür; hazırsa fazla beklenmez
   var SWITCH_CACHE_MAX = 3 * 3600 * 1000;   // şehir değişiminde bu kadar yeni önbellek anında gösterilir (arkada yenilenir)
   // Saatlik ayrıntı paneli için ek değişkenler AYNI istekte gelir (ek istek yok). Model bir değişkeni vermezse dizi null/eksik kalır; panel o kartı gizler.
-  var HOURLY_VARS = 'temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,rain,snowfall,is_day,relative_humidity_2m,dew_point_2m,pressure_msl,cloud_cover,visibility,' +
+  var HOURLY_VARS = 'temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,rain,snowfall,is_day,relative_humidity_2m,dew_point_2m,pressure_msl,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,' +
     'wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,cape,lifted_index,convective_inhibition,freezing_level_height';
   var HOURLY_SAFE = 'temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,is_day,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index';   // 400 durumunda yedek
   var PAST_KEEP_H = 24;   // bugünden önce saklanan saat sayısı: 12 saatlik basınç değişimi + 'dünkü aynı saat' karşılaştırması + son 24 saat yağış toplamı
@@ -140,27 +140,38 @@
     var aqLv = x.aqi == null ? 0 : EAQI.level(x.aqi);   // sınıf eaqi.js'ten (Worker ile aynı)
     var aqTip = aqLv >= 3 ? { i: 'mask', c: '#ffb3c1', long: aqLv >= 4 ? 'Hava kalitesi çok kötü, dışarıda uzun kalma' : 'Hava kalitesi kötü, dışarıda efor yapma', short: 'Hava kirli' } : null;
     if (aqTip && aqLv >= 4) t.push(aqTip);
-    if (wet) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Yağış var, şemsiyeni yanına al', short: 'Şemsiye al' });
-    else if (x.rain.first === 0) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Yağış ihtimali şu an yüksek, şemsiye al', short: 'Şemsiye al' });
-    else if (x.rain.first > 0 && x.rain.first <= 6) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Yaklaşık ' + x.rain.first + ' saat sonra yağış var, şemsiye al', short: 'Şemsiye al' });
-    else if (x.rainDay >= 60) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Bugün yağış ihtimali yüksek, şemsiye al', short: 'Şemsiye al' });
+    // 0.8: yağış + giyim + rüzgâr + güneş/ısı ORTAK bağlamdan (advice.js context) karar verir; çelişen/tekrarlayan çip üretilmez
+    var cx = window.ADVICE && ADVICE.context ? ADVICE.context({ feels: x.feels, temp: x.temp, wind: x.wind, gust: x.gust, hum: x.hum, code: x.code, precip: x.precip, uvNow: x.uvNow, uvSoon: x.uvSoon, isDay: x.isDay, rainFirst: x.rain.first, rainDay: x.rainDay }) : null;
+    var gear = cx && cx.precipitation.kind === 'rain' ? ADVICE.gear(cx, advMemory(), Date.now()) : null;
+    if (gear) t.push({ i: gear.icon, c: '#6ec6ff', long: gear.text, short: gear.short, key: gear.key, gear: true });
+    else if (!cx) {   // advice.js yoksa eski davranış
+      if (wet) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Yağış var, şemsiyeni yanına al', short: 'Şemsiye al' });
+      else if (x.rain.first === 0) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Yağış ihtimali şu an yüksek, şemsiye al', short: 'Şemsiye al' });
+      else if (x.rain.first > 0 && x.rain.first <= 6) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Yaklaşık ' + x.rain.first + ' saat sonra yağış var, şemsiye al', short: 'Şemsiye al' });
+      else if (x.rainDay >= 60) t.push({ i: 'umbrella', c: '#6ec6ff', long: 'Bugün yağış ihtimali yüksek, şemsiye al', short: 'Şemsiye al' });
+    }
     if (x.wind >= 40) t.push({ i: 'wind', c: '#b6f0e0', long: 'Rüzgâr çok kuvvetli, dışarıda dikkatli ol', short: 'Kuvvetli rüzgâr' });
-    else if (x.wind >= 28) t.push({ i: 'wind', c: '#b6f0e0', long: 'Rüzgâr kuvvetli, hafif eşyaları sabitle', short: 'Rüzgârlı' });
+    else if (x.wind >= 28 && !(gear && gear.windy)) t.push({ i: 'wind', c: '#b6f0e0', long: 'Rüzgâr kuvvetli, hafif eşyaları sabitle', short: 'Rüzgârlı' });   // birleşik öneri rüzgârı zaten söylüyorsa tekrar yok
     if (aqTip && aqLv < 4) t.push(aqTip);
     // Güneş kremi: gün boyu en yüksek UV değil, şu an / yakın saatlerdeki UV belirler (akşam 'krem sür' denmez)
-    var sunNeed = window.ADVICE ? ADVICE.uvNeed({ isDay: x.isDay, uvNow: x.uvNow, uvSoon: x.uvSoon }) : (x.isDay && x.uv >= 6);
-    if (sunNeed && !wet && !storm) t.push({ i: 'sun', c: '#ffc93c', long: 'Güneş kremi sürmeyi unutma', short: 'Güneş kremi' });
-    // Giyim: hissedilen + rüzgâr + akşam serinlemesi (advice.js)
+    var sunNeed = cx ? cx.sun_uv.need : (window.ADVICE ? ADVICE.uvNeed({ isDay: x.isDay, uvNow: x.uvNow, uvSoon: x.uvSoon }) : (x.isDay && x.uv >= 6));
+    var hs = cx && !wet && !storm ? ADVICE.heatSun(cx) : null;
+    if (hs) t.push({ i: 'sun', c: '#ffc93c', long: hs.text, short: hs.short, key: hs.key });
+    else if (sunNeed && !wet && !storm) t.push({ i: 'sun', c: '#ffc93c', long: 'Güneş kremi sürmeyi unutma', short: 'Güneş kremi' });
+    // Giyim: hissedilen + rüzgâr + akşam serinlemesi (advice.js). Yağış önerisi giyimi zaten kapsıyorsa ("Üstlük + yağmurluk") ayrıca "Üstlük yeterli" denmez.
     var cl = x.cloth;
-    if (cl) t.push({ i: 'jacket', c: '#ffab7a', long: cl.text, short: cl.short });
-    if (x.feels >= 30) t.push({ i: 'thermo', c: '#ff7a59', long: 'Hava sıcak, bol su iç ve gölgede kal', short: 'Sıcak hava' });
+    if (cl && !gear) t.push({ i: 'jacket', c: '#ffab7a', long: cl.text, short: cl.short, key: 'cloth:' + (cl.key || '') });
+    else if (cl && gear && /^eve/.test(cl.key || '')) t.push({ i: 'jacket', c: '#ffab7a', long: cl.text, short: cl.short, key: 'cloth:' + cl.key });   // akşam serinliği ek bilgidir, çelişmez
+    if (x.feels >= 30 && !hs) t.push({ i: 'thermo', c: '#ff7a59', long: 'Hava sıcak, bol su iç ve gölgede kal', short: 'Sıcak hava' });
     if (!t.length) {
       // Yedek çip yalnızca risk yokken olumlu; sürüş/hava riski varken olumlu cümle çıkmaz (çelişki kontrolü)
       if (x.mode === 'danger' || x.mode === 'risk' || x.mode === 'caution') t.push({ i: 'car', c: '#ffd25e', long: x.mode === 'caution' ? 'Hava koşullarına dikkat et' : 'Hava koşulları riskli, dikkatli ol', short: x.mode === 'caution' ? 'Dikkatli ol' : 'Hava riskli' });
       else if (x.isDay) { var nice = window.ADVICE ? ADVICE.variant(advMemory(), 'chip:nice', ['Güzel bir gün, keyfini çıkar', 'Hava keyifli, dışarı çıkmak güzel olur', 'Sakin ve rahat bir gün'], Date.now()) : 'Güzel bir gün, keyfini çıkar'; t.push({ i: 'smile', c: '#ffd166', long: nice, short: 'Güzel gün' }); }
       else t.push({ i: 'moon', c: '#cfd8ff', long: 'Sakin bir akşam, iyi dinlenmeler', short: 'İyi geceler' });
     }
-    return t.slice(0, 3);
+    var seen = {}, out = [];   // aynı cümle / aynı kısa metin iki çipte tekrar etmez
+    t.forEach(function (c) { var k = c.long + '|' + c.short; if (seen[c.long] || seen[c.short]) return; seen[c.long] = seen[c.short] = 1; out.push(c); });
+    return out.slice(0, 3);
   }
 
   // ---------- Durum ----------
@@ -245,7 +256,7 @@
   // ---------- Çizim parçaları ----------
   function tipsHtml(tips) {
     return '<div class="tips" aria-label="Öneriler">' + tips.map(function (t, i) {
-      return '<span class="tip' + (i ? ' sm' : '') + '"><span class="tip-i" style="background:' + t.c + '">' + uiIcon(t.i, i ? 14 : 18) + '</span>' + (i ? t.short : t.long) + '</span>';
+      return '<span class="tip' + (i ? ' sm' : '') + '" data-fbtip="' + i + '" role="button" tabindex="0" aria-haspopup="dialog" aria-label="' + esc((i ? t.short : t.long) + '. Bu öneri uygun mu?') + '"><span class="tip-i" style="background:' + t.c + '">' + uiIcon(t.i, i ? 14 : 18) + '</span>' + (i ? t.short : t.long) + '</span>';
     }).join('') + '</div>';
   }
 
@@ -366,10 +377,13 @@
           '<div class="now-t" ' + dtAttr('temp', 'Sıcaklık') + '><div class="temp" aria-label="' + num(c.temperature_2m) + ' derece">' + num(c.temperature_2m) + '<sup>°</sup></div><p class="cond">' + info.text + '</p></div></div>' +
         '<p class="meta"><span><span class="sr">En yüksek </span>↑ ' + deg(dl.temperature_2m_max[0]) + '</span><span><span class="sr">En düşük </span>↓ ' + deg(dl.temperature_2m_min[0]) + '</span><span ' + dtAttr('feels', 'Hissedilen sıcaklık') + '>Hissedilen ' + deg(c.apparent_temperature) + '</span></p>' +
         tipsHtml(tips) +
+        (window.HDFeedback ? '<div class="fb-row"><button type="button" class="fb-ask" id="fbAsk" aria-haspopup="dialog">Hava doğru mu?</button><button type="button" class="fb-ask" id="fbAskTip" aria-haspopup="dialog">Öneri doğru mu?</button></div>' : '') +
       '</section>' +
       '<section class="stats" aria-label="Ayrıntılar">' + humidityCard(c.relative_humidity_2m) + windCard(c.wind_speed_10m, c.wind_direction_10m) + rainCard(outlook, wetNow) + uvCard(uvToday) + '</section>' +
       hourlyCard(h, start, !reduceMotion()) +
       '<section class="card today" id="todayCard" aria-labelledby="h-today"></section>' +
+      '<section class="pol-sec" id="starCard" aria-label="Yıldız Gözlem" hidden></section>' +
+      '<section class="pol-sec" id="pollenCard" aria-label="Polen" hidden></section>' +
       '<section class="card aq" id="aqCard" aria-labelledby="h-aq"></section>' +
       mapShell() +
       sunCard({ sunrise: dl.sunrise[0], sunset: dl.sunset[0], time: c.time }) + dailyCard(dl, c.temperature_2m);
@@ -377,6 +391,9 @@
     mark('render-html');
     if (window.HDHourly) window.HDHourly.sync();   // açık saatlik panel varsa: aynı şehir → yeni veriyle yenile, farklı şehir → kapat
     if (window.HDDetail) window.HDDetail.sync();   // aynı kural: açık ayrıntı ekranı
+    if (window.HDFeedback) window.HDFeedback.sync();
+    if (window.HDStars) window.HDStars.sync();   // yıldız gözlem: mevcut hava verisinden yerel hesap, ek istek yok
+    if (window.HDPollen) window.HDPollen.sync();   // polen: ana çizimden sonra, boşta ve ayrı istekle
     fillInsights();
     mark('render-insights');
 
@@ -407,7 +424,7 @@
     if (window.DAILY && window.ADVICE) {
       try { var dx = DAILY.fromData(d, s, null); dx.eveMin = fe.length ? Math.min.apply(null, fe) : null; cloth = DAILY.outfit(dx, cloth, { rain: false, chip: true }) || cloth; } catch (e) { /* eski giyim çipi kalır */ }
     }
-    return { code: c.weather_code, isDay: c.is_day === 1, feels: c.apparent_temperature, wind: c.wind_speed_10m, hum: c.relative_humidity_2m,
+    return { code: c.weather_code, isDay: c.is_day === 1, feels: c.apparent_temperature, temp: c.temperature_2m, gust: gust, precip: h.precipitation ? h.precipitation[s] : null, wind: c.wind_speed_10m, hum: c.relative_humidity_2m,
       uv: dl.uv_index_max[0] || 0, uvNow: h.uv_index ? (h.uv_index[s] || 0) : 0, uvSoon: uvSoon, rain: rainOutlook(h, s), rainDay: dl.precipitation_probability_max[0] || 0, minNext: minNext,
       aqi: state.aq ? state.aq.value : null, cloth: cloth, mode: state.adv ? state.adv.mode : 'ok' };
   }
@@ -485,11 +502,6 @@
       var val = p.val < 10 ? (Math.round(p.val * 10) / 10) : round(p.val);
       return '<li><span class="dot" style="background:' + (p.color || 'rgba(255,255,255,.35)') + '"></span><span class="n">' + p.name + '</span><span class="v">' + String(val).replace('.', ',') + ' µg/m³</span><span class="l">' + (p.label || '—') + '</span></li>';
     }).join('');
-    var pollen = '';
-    if (a.pollenKnown) {
-      pollen = '<h3>Polen</h3>' + (a.pollen.length ? '<ul class="pollen">' + a.pollen.map(function (p) {
-        return '<li><b>' + p.name + '</b> ' + String(Math.round(p.val * 10) / 10).replace('.', ',') + ' tane/m³</li>'; }).join('') + '</ul>' : '<p class="aq-note">Şu an ölçülebilir polen yok.</p>');
-    } else pollen = '<p class="aq-note">Polen verisi bu bölge veya mevsim için yok.</p>';
     return head +
       '<div class="aq-main"><div class="aq-num" style="border-color:' + a.color + '"><b>' + a.value + '</b></div>' +
       '<div class="aq-txt"><div class="aq-lbl"><i style="background:' + a.color + '"></i>' + a.label + '</div><p>' + a.sentence + '</p></div></div>' +
@@ -498,7 +510,7 @@
       '<div class="aq-detail" id="aqDetail"' + (state.aqOpen ? '' : ' hidden') + '>' +
         (a.main ? '<p class="aq-main-note">Başlıca etken: <b>' + a.main + '</b></p>' : '') +
         '<ul class="pol">' + rows + '</ul>' +
-        (a.us != null ? '<p class="aq-us">ABD AQI karşılığı: <b>' + a.us + '</b></p>' : '') + pollen +
+        (a.us != null ? '<p class="aq-us">ABD AQI karşılığı: <b>' + a.us + '</b></p>' : '') +
         '<p class="aq-src">Kirletici sınıfları anlık değere göre gösterilir; genel endeks ortalamalara dayandığı için ikisi birebir örtüşmeyebilir.</p><p class="aq-src">Kaynak: <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noopener">Open-Meteo</a> · CAMS ENSEMBLE (Copernicus Atmosphere Monitoring Service) verisinden türetilmiş model sonucudur; yerel ölçüm istasyonundan farklı olabilir.</p>' +
       '</div>';
   }
@@ -521,7 +533,7 @@
   function fetchAQ(city) {
     var ctl = new AbortController();
     var url = API_AQ + '?latitude=' + city.lat + '&longitude=' + city.lon +
-      '&current=european_aqi,us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&hourly=european_aqi,pm2_5,pm10&timezone=auto';   // saatlik AQ: aynı istek (panel için)
+      '&current=european_aqi,us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide&hourly=european_aqi,pm2_5,pm10&timezone=auto';   // saatlik AQ: aynı istek (panel için)
     var p = fetch(url, { signal: ctl.signal })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (j) { var a = Insights.airQuality(j.current); if (!a) throw new Error('veri yok'); if (j.hourly && j.hourly.time) a.hourly = { time: j.hourly.time, eaqi: j.hourly.european_aqi, pm25: j.hourly.pm2_5, pm10: j.hourly.pm10 }; return a; });
@@ -685,8 +697,25 @@
     grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
   })();
 
+  // Geri bildirim (0.8, feedback.js): o an EKRANDA gösterilen hava + öneriler; kişisel veri yok
+  function fbSnapshot() {
+    if (!state.city || !state.data) return null;
+    var d = state.data, c = d.current, h = d.hourly, s = state.start, ti = tipsInput(), tips = tipsFor(ti), info = describe(c.weather_code, c.is_day === 1), cc = {}, k;
+    for (k in state.city) if (Object.prototype.hasOwnProperty.call(state.city, k)) cc[k] = state.city[k];
+    cc.id = cityId(state.city);
+    return { city: cc, code: c.weather_code, temp: c.temperature_2m, feels: c.apparent_temperature, precip: h.precipitation ? h.precipitation[s] : null,
+      pop: h.precipitation_probability ? h.precipitation_probability[s] : null, wind: c.wind_speed_10m, gust: ti.gust, rainFirst: ti.rain.first,
+      text: info.text, advice: tips.map(function (t, i) { return i ? t.short : t.long; }),
+      tips: tips.map(function (t, i) { return { key: t.key || t.i, i: t.i, gear: !!t.gear, long: t.long, shown: i ? t.short : t.long }; }) };
+  }
   // Tek yerden tıklama yönetimi (içerik her yenilendiğinde yeniden bağlanmasın)
   el.content.addEventListener('click', function (e) {
+    var fbt = e.target.closest('[data-fbtip]');
+    if (fbt && window.HDFeedback) { window.HDFeedback.openAdvice(+fbt.dataset.fbtip, fbt); return; }
+    var fbo = e.target.closest('#fbAskTip');
+    if (fbo && window.HDFeedback) { window.HDFeedback.openAdvice(0, fbo); return; }   // ana (ilk) öneri çipi için
+    var fba = e.target.closest('#fbAsk');
+    if (fba && window.HDFeedback) { window.HDFeedback.openWeather(fba); return; }
     var dy = e.target.closest('.dy[data-day]');
     if (dy) { openSheet(+dy.dataset.day, dy); return; }
     var hb = e.target.closest('.hr-b[data-hr]');
@@ -708,6 +737,8 @@
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var dt = e.target.closest && e.target.closest('[data-dt]');
     if (dt && e.target === dt && window.HDDetail) { e.preventDefault(); window.HDDetail.open(dt.dataset.dt, dt); }
+    var ft = e.target.closest && e.target.closest('[data-fbtip]');
+    if (ft && e.target === ft && window.HDFeedback) { e.preventDefault(); window.HDFeedback.openAdvice(+ft.dataset.fbtip, ft); }
   });
 
   // ---------- Favoriler ----------
@@ -1099,10 +1130,13 @@
   // Saatlik ayrıntı paneli (hourly.js): veri/durum erişimi yalnızca bu dar arayüzle; panel kendi isteği atmaz
   var panelCtx = {
     state: state, $: $, esc: esc, round: round, num: num, deg: deg, hm: hm, parts: parts, describe: describe, weatherIcon: weatherIcon, uiIcon: uiIcon,
-    windFrom: windFrom, uvClass: uvClass, UV_CLASSES: UV_CLASSES, reduceMotion: reduceMotion, stamp: stamp, cityId: cityId, app: el.app, store: store
+    windFrom: windFrom, uvClass: uvClass, UV_CLASSES: UV_CLASSES, reduceMotion: reduceMotion, stamp: stamp, cityId: cityId, app: el.app, store: store, feedbackSnap: fbSnapshot
   };
   if (window.HDHourly) window.HDHourly.init(panelCtx);
   if (window.HDDetail) window.HDDetail.init(panelCtx);
+  if (window.HDFeedback) window.HDFeedback.init(panelCtx);
+  if (window.HDPollen) window.HDPollen.init(panelCtx);
+  if (window.HDStars) window.HDStars.init(panelCtx);
 
 
   // ---------- Başlangıç ----------

@@ -504,8 +504,85 @@
     return !!o.isDay && m >= CFG.life.uvLine;
   }
 
+
+  // =====================================================================================================
+  //  ORTAK HAVA BAĞLAMI (0.8) — tüm öneri kartları AYNI yorumdan karar verir
+  // =====================================================================================================
+  // o: { feels, temp, wind, gust, hum, code, precip (mm/sa), uvNow, uvSoon, isDay, rainFirst (saat | -1), rainDay (%) }
+  // Dönüş: { thermal:{feels,band}, precipitation:{state,kind,intensity,firstHours}, wind:{level,speed,gust}, sun_uv:{need,uv,level}, comfort:{level} }
+  //   thermal.band: cold ≤3 · cool ≤10 · mild ≤17 · pleasant <24 · warm <30 · hot ≥30      (kaynak: CFG.clothing)
+  //   precipitation.state: now | soon | later | none · kind: rain | snow | storm | null · intensity: light | moderate | heavy | null
+  //   wind.level: calm | breezy | windy | strong
+  function isRainCode(c) { return (c >= 51 && c <= 67) || (c >= 80 && c <= 82); }
+  function isSnowCode(c) { return (c >= 71 && c <= 77) || c === 85 || c === 86; }
+  function context(o) {
+    o = o || {};
+    var C = CFG.clothing, f = num(o.feels), code = num(o.code), w = num(o.wind), gu = num(o.gust), mm = num(o.precip), rf = num(o.rainFirst), rd2 = num(o.rainDay);
+    var band = f === null ? null : f <= C.cold ? 'cold' : f <= C.cool ? 'cool' : f <= C.mild ? 'mild' : f < 24 ? 'pleasant' : f < C.hot ? 'warm' : 'hot';
+    // yağış
+    var kind = null, state = 'none', inten = null;
+    if (code !== null && code >= 95) { kind = 'storm'; state = 'now'; }
+    else if (code !== null && isSnowCode(code)) { kind = 'snow'; state = 'now'; }
+    else if (code !== null && isRainCode(code)) { kind = 'rain'; state = 'now'; }
+    else if (rf !== null && rf >= 0 && rf <= 6) { kind = 'rain'; state = 'soon'; }
+    else if (rd2 !== null && rd2 >= 60) { kind = 'rain'; state = 'later'; }
+    if (state === 'now') {
+      var li = 0;
+      if (code === 65 || code === 82 || code === 67 || code === 75 || code >= 95) li = 3;
+      else if (code === 63 || code === 81 || code === 73 || code === 57 || code === 66 || code === 86) li = 2;
+      else li = 1;
+      if (mm !== null) li = Math.max(li, mm >= 7.6 ? 3 : mm >= 2.5 ? 2 : 1);
+      inten = li === 3 ? 'heavy' : li === 2 ? 'moderate' : 'light';
+    }
+    // rüzgâr
+    var lvl = 'calm';
+    if ((w !== null && w >= 40) || (gu !== null && gu >= 60)) lvl = 'strong';
+    else if ((w !== null && w >= C.windy) || (gu !== null && gu >= 45)) lvl = 'windy';
+    else if ((w !== null && w >= 20) || (gu !== null && gu >= 35)) lvl = 'breezy';
+    // güneş / UV
+    var uvm = Math.max(num(o.uvNow) || 0, num(o.uvSoon) || 0), uvLvl = uvm >= 11 ? 'extreme' : uvm >= 8 ? 'veryhigh' : uvm >= 6 ? 'high' : uvm >= 3 ? 'moderate' : 'low';
+    var need = uvNeed({ isDay: o.isDay !== false, uvNow: o.uvNow, uvSoon: o.uvSoon });
+    // genel konfor seviyesi (kartlar arası ton uyumu için)
+    var comfort = 'good';
+    if (state !== 'none' || lvl === 'windy' || lvl === 'breezy' && state !== 'none' || band === 'cold' || band === 'hot') comfort = 'fair';
+    if (kind === 'storm' || inten === 'heavy' || lvl === 'strong' || (f !== null && (f <= -5 || f >= 35))) comfort = 'poor';
+    return { thermal: { feels: f, band: band }, precipitation: { state: state, kind: kind, intensity: inten, firstHours: rf }, wind: { level: lvl, speed: w, gust: gu },
+      sun_uv: { need: need, uv: uvm, level: uvLvl }, comfort: { level: comfort } };
+  }
+  function lowerFirst(s) { return s ? s.charAt(0).toLocaleLowerCase('tr') + s.slice(1) : s; }
+  // Yağış + giyim + rüzgâr → TEK birleşik öneri (şemsiye çipi ile "Üstlük yeterli" çipi birbiriyle çelişmesin).
+  // Dönüş: { key, text, short, icon:'umbrella'|'jacket', rainGear:true, windy:bool } | null (yağış beklenmiyorsa)
+  // mem/now: metin varyasyonu için (variant); yalnızca eş doğru metinler arasında döner.
+  function gear(ctx, mem, now) {
+    var P = ctx && ctx.precipitation; if (!P || P.state === 'none' || P.kind !== 'rain') return null;
+    var band = ctx.thermal.band, W = ctx.wind.level, st = P.state, rf = P.firstHours;
+    var windy = (W === 'windy' || W === 'strong') && st !== 'later';
+    var core, short, icon = 'umbrella', cat;
+    if (st === 'now' && P.intensity === 'heavy') { cat = 'heavy'; core = 'Yağış kuvvetli: mümkünse bekle, çıkacaksan kapüşonlu yağmurluk giy'; short = 'Kuvvetli yağış'; icon = 'jacket'; }
+    else if (windy) { cat = 'windrain'; core = 'Şemsiye yerine kapüşonlu yağmurluk daha uygun'; short = 'Kapüşonlu yağmurluk'; icon = 'jacket'; }
+    else if (band === 'cold') { cat = 'cold'; core = 'Kalın giyin, yağmurluk ya da şemsiye al'; short = 'Kalın giyin + yağmurluk'; }
+    else if (band === 'cool') { cat = 'coat'; core = 'Mont + yağmurluk iyi olur'; short = 'Mont + yağmurluk'; }
+    else if (band === 'mild') { cat = 'layer'; core = variant(mem, 'gear:layer', ['Üstlük + yağmurluk iyi olur', 'Üstlük yeterli, yağmurluğu unutma'], now); short = 'Üstlük + yağmurluk'; }
+    else if (band === 'warm' || band === 'hot') { cat = 'light'; core = 'Hafif giyin, şemsiyeni yanına al'; short = 'Hafif giyin + şemsiye'; }
+    else { cat = 'plain'; }
+    var text;
+    if (cat === 'plain') {
+      text = st === 'now' ? 'Yağış var, şemsiyeni yanına al' : rf === 0 ? 'Yağış ihtimali şu an yüksek, şemsiye al' : st === 'soon' ? 'Yaklaşık ' + rf + ' saat sonra yağış var, şemsiye al' : 'Bugün yağış ihtimali yüksek, şemsiye al';
+      short = 'Şemsiye al';
+    } else if (cat === 'heavy') text = core;
+    else if (st === 'now') text = core;
+    else text = (rf === 0 ? 'Yağış ihtimali şu an yüksek' : st === 'soon' ? 'Yaklaşık ' + rf + ' saat sonra yağış var' : 'Bugün yağış ihtimali yüksek') + ': ' + lowerFirst(core);
+    return { key: 'gear:' + cat, cat: cat, text: text, short: short, icon: icon, rainGear: true, windy: cat === 'windrain' || cat === 'heavy' };
+  }
+  // Güçlü güneş + sıcak → TEK çip (güneş kremi çipi ile "bol su iç" çipi aynı şeyi ikiye bölmesin). Yalnızca ikisi birden varsa.
+  function heatSun(ctx) {
+    if (!ctx || !ctx.sun_uv.need || ctx.thermal.feels === null || ctx.thermal.feels < 28) return null;
+    if (ctx.precipitation.state === 'now' || ctx.precipitation.kind === 'storm') return null;
+    return { key: 'heatsun', text: 'Güneş güçlü ve hava sıcak: krem sür, gölgede kal, bol su iç', short: 'Krem + gölge + su', icon: 'sun' };
+  }
+
   var API = {
-    CFG: CFG, DRIVE_LABEL: DL, drive: drive, driveHour: driveHour, driveAtHour: driveAtHour, life: life, clothing: clothing, uvNeed: uvNeed,
+    context: context, gear: gear, heatSun: heatSun, CFG: CFG, DRIVE_LABEL: DL, drive: drive, driveHour: driveHour, driveAtHour: driveAtHour, life: life, clothing: clothing, uvNeed: uvNeed,
     variant: variant, memNew: memNew, partOf: partOf, hourX: hourX
   };
   g.ADVICE = API;

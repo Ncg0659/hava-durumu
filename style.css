@@ -742,3 +742,89 @@ html.lock, html.lock body { overflow: hidden; }
 .lf-pet.l1 { box-shadow: inset 3px 0 0 #ffd25e; }
 .lf-pet.l2 { box-shadow: inset 3px 0 0 #ff9a8f; }
 @media (max-width: 345px) { .cf-n b { font-size: 21px; } .cf-t { font-size: 13.5px; } }
+
+/* ---------- 0.8: geri bildirim ("Hava doğru mu?" + öneri geri bildirimi) ---------- */
+.tip[data-fbtip] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tip[data-fbtip]:active { background: rgba(255, 255, 255, .3); }
+.fb-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.fb-ask { position: relative; display: block; margin: 0; min-height: 30px; padding: 4px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, .82); background: transparent; border: 1px solid rgba(255, 255, 255, .22); -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.fb-ask::after { content: ""; position: absolute; inset: -8px -6px; }   /* görünen düğme küçük, dokunma alanı ≥ 44px */
+.fb-ask:active { background: rgba(255, 255, 255, .14); }
+.fbs .sh-head { align-items: flex-start; }
+.fbs .sh-sp { flex: none; width: 28px; height: 28px; margin-right: 4px; }   /* başlığı ortalamak için sol boşluk (X düğmesiyle simetrik) */
+.fbs .sh-x { margin-top: 0; }
+.fb-yn, .fb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 6px; }
+.fb-yn.three { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fb-grid.few { grid-template-columns: 1fr; }
+.fb-opt { min-height: 56px; padding: 10px 12px; border-radius: 18px; font-size: 16px; font-weight: 600; line-height: 1.2; text-align: center; color: var(--ink); background: rgba(255, 255, 255, .12); border: 1px solid var(--line); -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.fb-opt:active { background: rgba(255, 255, 255, .22); }
+.fb-opt.yes { background: #fff; color: var(--navy); border-color: transparent; }
+.fb-opt.yes:active { background: #e6edf7; }
+.fb-yn.three .fb-opt { font-size: 15px; padding: 10px 6px; }
+.fb-more { display: block; margin: 4px auto 0; min-height: 44px; padding: 0 18px; font-size: 14px; font-weight: 500; color: var(--ink-2); background: transparent; border: 0; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.fb-thanks { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 140px; padding: 8px 0 12px; text-align: center; }
+.fb-thanks p { font-size: 16px; font-weight: 600; color: var(--ink); }
+.fb-tick { width: 52px; height: 52px; padding: 11px; border-radius: 50%; background: rgba(120, 220, 160, .2); color: #8be6b0; }
+@media (prefers-reduced-motion: no-preference) { .fb-thanks .fb-tick { animation: fbPop .32s cubic-bezier(.2, .8, .2, 1); } }
+@keyframes fbPop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- 0.8 Polen / Alerji ---- */
+.pol-sec { margin: 0; }
+.pol-sec[hidden] { display: none; }
+.pol-sec .drive { margin-top: 0; padding: 11px 30px 11px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; }
+.drive.pollen.none { padding-right: 12px; }
+.drive.pollen.none .drive-b b { font-weight: 600; }
+.drive.pollen[data-pol] { cursor: pointer; }
+.drive.pollen small { overflow-wrap: anywhere; }
+.pols .sh-head { align-items: flex-start; }
+.pols .sh-title h2 { white-space: normal; }
+.pol-hero { --c: #6ee7a3; margin-top: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .1); }
+.pol-hero.d1 { --c: #ffd25e; } .pol-hero.d2 { --c: #ff9a8f; }
+.pol-lv .lv { font-size: 20px; gap: 7px; } .pol-lv .lv i { width: 10px; height: 10px; }
+.pol-hl { margin-top: 4px; font-size: 15px; line-height: 1.35; color: var(--ink); overflow-wrap: anywhere; }
+em.lv.pl0 { --c: #6ee7a3; } em.lv.pl1 { --c: #ffd25e; } em.lv.pl2 { --c: #ff9a8f; }
+.pol-facts { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 1px; border-radius: 14px; overflow: hidden; }
+.pol-facts li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 12px; background: rgba(255, 255, 255, .08); font-size: 14px; }
+.pol-facts li span { color: var(--ink-3); flex: none; } .pol-facts li b { font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.pol-w { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(143, 216, 255, .1); border: 1px solid rgba(143, 216, 255, .25); }
+.pol-w h3 { font-size: 12.5px; font-weight: 600; color: var(--ink-3); margin-bottom: 2px; } .pol-w p { font-size: 14px; line-height: 1.35; }
+.pol-h { margin: 16px 0 8px; font-size: 14px; font-weight: 650; color: var(--ink-2); } .pol-h small { font-weight: 400; color: var(--ink-3); font-size: 12px; margin-left: 4px; }
+.pol-strip { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; scrollbar-width: none; }
+.pol-strip::-webkit-scrollbar { display: none; }
+.pol-cell { flex: none; min-width: 74px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border-radius: 14px; background: rgba(255, 255, 255, .1); font-size: 12.5px; }
+.pol-cell span { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pol-cell b { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 650; color: var(--c); white-space: nowrap; }
+.pol-cell b i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.pol-cell b.pl0 { --c: #6ee7a3; } .pol-cell b.pl1 { --c: #ffd25e; } .pol-cell b.pl2 { --c: #ff9a8f; } .pol-cell b.x { color: var(--ink-3); font-weight: 400; }
+.pol-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; border-radius: 14px; overflow: hidden; }
+.pol-list li { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "n v" "r r"; align-items: center; gap: 1px 10px; padding: 9px 12px; background: rgba(255, 255, 255, .08); }
+.pol-list li.off { opacity: .55; }
+.pol-list .n { grid-area: n; font-size: 15px; font-weight: 600; } .pol-list .v { grid-area: v; } .pol-list .r { grid-area: r; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pol-pref { display: flex; flex-wrap: wrap; gap: 6px; }
+.pol-sm { margin-top: 6px; font-size: 12px; color: var(--ink-3); }
+.pol-none { margin: 18px 4px 6px; font-size: 15px; color: var(--ink-2); text-align: center; }
+.pol-info { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; color: var(--ink-3); display: grid; gap: 6px; }
+.pol-info a { color: var(--ink-2); }
+@media (max-width: 345px) { .pol-cell { min-width: 68px; } .pol-facts li { font-size: 13.5px; } }
+
+/* ---- 0.8 Yıldız Gözlem (polen kartı/panel stillerini paylaşır: .pol-sec .drive, .pol-hero, .pol-facts, .pol-strip …) ---- */
+.drive.stars .lv { white-space: normal; }
+.st-big { display: flex; align-items: center; gap: 14px; }
+.st-big b { font-size: 40px; font-weight: 400; letter-spacing: -.03em; line-height: 1; font-variant-numeric: proportional-nums; }
+.st-big b small { font-size: 18px; color: var(--ink-3); margin-left: 2px; }
+.st-big .lv { font-size: 18px; gap: 7px; } .st-big .lv i { width: 9px; height: 9px; }
+.st-kind { margin-top: 6px; font-size: 12px; color: var(--ink-3); }
+.st-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.st-why li { position: relative; padding-left: 14px; font-size: 14px; line-height: 1.35; color: var(--ink-2); }
+.st-why li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 5px; height: 5px; border-radius: 50%; background: var(--ink-3); }
+.st-facts { margin-top: 12px; }
+.st-facts li b { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 8px; }
+.st-cell { gap: 3px; min-width: 66px; color: var(--ink-2); }
+.st-cell svg { color: var(--ink-3); }
+.st-cell.win { background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); }
+.st-moon { padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .08); display: grid; gap: 3px; }
+.st-mn { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 15px; }
+.st-mn b { font-weight: 600; } .st-mn span { color: var(--ink-2); }
+.st-moon p { font-size: 13.5px; color: var(--ink-2); } .st-moon .st-tag { color: var(--ink-3); font-size: 12.5px; }
+.st-dark { margin-top: 8px; }
+.nw { white-space: nowrap; }

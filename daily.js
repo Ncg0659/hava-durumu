@@ -256,7 +256,18 @@
     var dmx = num(x.dayMax), dmn = num(x.dayMin);
     if (dmx !== null && dmn !== null && dmx - dmn >= O.swing && !extra.length) extra.push('gün içinde sıcaklık değişiyor, katmanlı giyin');
     if (opt.rain !== false) {
-      if (wetNow(x) || (num(x.pop) !== null && x.pop >= 60)) extra.push('su geçirmez bir dış katman ya da şemsiye al');
+      if (wetNow(x) || (num(x.pop) !== null && x.pop >= 60)) {
+        var gr = null, A = g.ADVICE;
+        if (A && A.context && A.gear) {   // 0.8: ana ekran çipi ile AYNI ortak bağlam → aynı yağış/giyim kararı (çelişmez)
+          var pp = num(x.pop), isRainCd = num(x.code) !== null && ((x.code >= 51 && x.code <= 67) || (x.code >= 80 && x.code <= 82));
+          gr = A.gear(A.context({ feels: f, wind: w, gust: gu, code: x.code, precip: x.precip, rainFirst: isRainCd ? -1 : 0, rainDay: pp }), null, 0);
+        }
+        var CL = { heavy: 'yağış kuvvetli, mümkünse bekle; çıkacaksan kapüşonlu yağmurluk giy', windrain: 'şemsiye yerine kapüşonlu yağmurluk daha uygun', cold: 'yağmurluk ya da şemsiye al', coat: 'yağmurluk da al', layer: 'yağmurluğu unutma', light: 'şemsiyeni yanına al', plain: 'şemsiye al' };
+        if (gr && CL[gr.cat]) {
+          if (gr.windy) { extra = extra.filter(function (e) { return !/rüzgâr/.test(e); }); if (base && base.key === 'windy') base = { key: 'windy', text: '', short: base.short }; }   // yağmurluk önerisi rüzgârı zaten kapsıyor
+          extra.unshift(CL[gr.cat]);   // yağış kararı öncelikli
+        } else extra.push('su geçirmez bir dış katman ya da şemsiye al');
+      }
     }
     if (opt.chip && !base && !extra.length) return null;   // ana ekran çipi: yalnızca gerçek bir ihtiyaç varsa (yeni çip eklenmez)
     if (base && base.key) { var bk = base.key; if (/^eve/.test(bk)) extra = extra.filter(function (e) { return !/akşam/.test(e); }); if (bk === 'windy') extra = extra.filter(function (e) { return !/rüzgâr/.test(e); }); }
