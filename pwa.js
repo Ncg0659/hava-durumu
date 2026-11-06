@@ -2,7 +2,7 @@
    "Paylaş > Ana Ekrana Ekle" yardımı (iPhone). Hava durumu mantığına dokunmaz. */
 'use strict';
 (function () {
-  var BUILD = 'ceb6ff7f', VERSION = '0.8.0';
+  var BUILD = 'cd6312ec', VERSION = '0.8.1';
   var INSTALL_KEY = 'hd2:pwa-install-no';   // kapatılırsa bir daha sorulmaz
   var IOS_KEY = 'hd2:pwa-ios-no';
   var SHOW_DELAY = 6000;                    // uygulama açıldıktan sonra rahatsız etmemek için bekle

@@ -11,12 +11,12 @@
    değişince bu dosyanın içeriği de değişir, tarayıcı yeni sürümü görür, yeni önbelleği kurar ve eskisini siler.
    Yeni sürüm kullanıcı onay verene kadar BEKLER (pwa.js "Yeni sürüm hazır — Güncelle" gösterir). */
 'use strict';
-var BUILD = 'ceb6ff7f';
+var BUILD = 'cd6312ec';
 var PREFIX = 'hd2-shell-';
 var CACHE = PREFIX + BUILD;
-var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'daily.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'feedback.js', 'pollen.js', 'pollen-ui.js', 'astro.js', 'stars.js', 'stars-ui.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'manifest.webmanifest',
-  'icons/icon-192.png?v=0.8.0', 'icons/icon-512.png?v=0.8.0', 'icons/icon-maskable-192.png?v=0.8.0', 'icons/icon-maskable-512.png?v=0.8.0',
-  'icons/apple-touch-icon.png?v=0.8.0', 'icons/favicon-32.png?v=0.8.0', 'icons/favicon-64.png?v=0.8.0', 'icons/badge-96.png?v=0.8.0'];
+var CORE = ['index.html', 'style.css', 'app.js', 'icons.js', 'eaqi.js', 'insights.js', 'meteo.js', 'advice.js', 'daily.js', 'hourly.js', 'detailcalc.js', 'detail.js', 'feedback.js', 'pollen.js', 'pollen-ui.js', 'astro.js', 'stars.js', 'stars-ui.js', 'obs-ui.js', 'hist-ui.js', 'bird-ui.js', 'locate.js', 'pwa.js', 'notify.js', 'places.js', 'locations-tr.json', 'bird-migration-tr.json', 'manifest.webmanifest',
+  'icons/icon-192.png?v=0.8.1', 'icons/icon-512.png?v=0.8.1', 'icons/icon-maskable-192.png?v=0.8.1', 'icons/icon-maskable-512.png?v=0.8.1',
+  'icons/apple-touch-icon.png?v=0.8.1', 'icons/favicon-32.png?v=0.8.1', 'icons/favicon-64.png?v=0.8.1', 'icons/badge-96.png?v=0.8.1'];
 var LAZY = /\/(vendor\/maplibre\/[^/]+|mah\/[^/]+\.json|mah-index\.json|mapview\.js|maplayers\.js|advanced\.js)$/;   // ilk kullanımda önbelleğe girer
 
 function scopeUrl(p) { return new URL(p, self.registration.scope).href; }
@@ -82,7 +82,7 @@ if (typeof self !== 'undefined' && self.addEventListener) {
     var d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = {}; }
     e.waitUntil(self.registration.showNotification(d.title || 'EYRIVO', {
       body: d.body || '', tag: d.tag || undefined, lang: 'tr',
-      icon: scopeUrl('icons/icon-192.png?v=0.8.0'), badge: scopeUrl('icons/badge-96.png?v=0.8.0'),
+      icon: scopeUrl('icons/icon-192.png?v=0.8.1'), badge: scopeUrl('icons/badge-96.png?v=0.8.1'),
       data: { url: d.url || self.registration.scope }
     }));
   });
