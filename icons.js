@@ -136,7 +136,10 @@
     pollen: '<circle cx="12" cy="12" r="2.600"/><circle cx="12" cy="5" r="1.400"/><circle cx="18.100" cy="8.500" r="1.400"/><circle cx="18.100" cy="15.500" r="1.400"/><circle cx="12" cy="19" r="1.400"/><circle cx="5.900" cy="15.500" r="1.400"/><circle cx="5.900" cy="8.500" r="1.400"/>',
     // Paket 6 (bu projede çizilmiş özgün çizgi ikonlar)
     expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
-    locate: '<circle cx="12" cy="12" r="3.200"/><circle cx="12" cy="12" r="7.500"/><path d="M12 2.500v3M12 18.500v3M2.500 12h3M18.500 12h3"/>'
+    locate: '<circle cx="12" cy="12" r="3.200"/><circle cx="12" cy="12" r="7.500"/><path d="M12 2.500v3M12 18.500v3M2.500 12h3M18.500 12h3"/>',
+    // Geçmişe Yolculuk (saat + geri ok; sade çizgi ikon)
+    bird: '<path d="M2.500 11c2.200-3.200 5-3.200 7 0 2-3.200 4.800-3.200 7 0"/><path d="M12 18c1.500-2.200 3.300-2.200 4.800 0 1.500-2.200 3.300-2.200 4.700 0"/><path d="M3 17.500c1.200-1.600 2.500-1.600 3.700 0"/>',
+    history: '<path d="M3.500 12a8.500 8.500 0 1 0 2.600-6.100"/><path d="M3.500 4.500v4.300h4.300"/><path d="M12 7.800V12l3 1.900"/>'
   };
   function uiIcon(name, size, extraClass) {
     return '<svg class="ui' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 24 24" width="' + size + '" height="' + size +

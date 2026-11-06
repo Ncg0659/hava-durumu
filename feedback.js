@@ -1,12 +1,14 @@
 /* EYRIVO geri bildirim (0.8): "Hava doğru mu?" ve "Bu öneri uygun mu?" — yalnızca butonlarla, yazı yok, kullanıcı bilgisi yok.
    Geri bildirim hava tahminini DEĞİŞTİRMEZ; Open-Meteo verisinden ayrı bir "EYRIVO gözlem katmanı" olarak Worker'a (/feedback) gönderilir.
    Aynı cihazdan aynı tür/konum/hava için 12 dk içinde tekrar gönderilmez (sakin mesaj). Çevrimdışıyken yerel sıraya alınır, bağlantı gelince gönderilir.
+   0.8.1: Aynı cihazın kısa sürede birden çok kez "oy" vermesini önlemek için kayda GÜNLÜK dönen rastgele bir jeton eklenir (cihazda saklanır; kişisel bilgi değil,
+   bir hesapla/servisle eşleşmez, takip/reklam için kullanılmaz). Sunucu onu gün+tuzla hash'ler, ham değeri saklamaz.
    Saf yardımcılar (seçenek seçimi, cooldown, kayıt kurma) tarayıcısız test edilebilir (module.exports). */
 'use strict';
 (function (g) {
   var CD_MS = 12 * 60 * 1000;                 // aynı tür geri bildirim bekleme süresi
   var Q_MAX = 20, Q_TTL = 24 * 3600 * 1000;   // çevrimdışı sıra: en çok 20 kayıt, 24 saatten eskisi atılır
-  var KEY_CD = 'hd2:fb:cd', KEY_Q = 'hd2:fb:q';
+  var KEY_CD = 'hd2:fb:cd', KEY_Q = 'hd2:fb:q', KEY_DEV = 'hd2:fb:dev';
   var MAX_PER_SCREEN = 6;                     // bir ekranda en çok bu kadar seçenek
 
   function num(v) { return typeof v === 'number' && isFinite(v) ? v : null; }
@@ -92,16 +94,35 @@
   function r2(v) { v = num(v); return v === null ? null : Math.round(v * 100) / 100; }
   function r1(v) { v = num(v); return v === null ? null : Math.round(v * 10) / 10; }
   function cut(v, n) { return typeof v === 'string' ? v.replace(/[\u0000-\u001f<>]/g, '').slice(0, n) : null; }
-  function buildRecord(snap, type, answer, detail, tip, now) {
-    snap = snap || {}; var c = snap.city || {};
+  // Konum alanları: hem kayıt hem /observations sorgusu AYNI işlevi kullanır (bölge eşleşmesi buna bağlı)
+  function locFields(c) {
+    c = c || {};
+    return {
+      province: cut(c.prov || (c.mah || c.dist ? '' : c.admin) || '', 40) || null,
+      district: cut(c.dist || (c.prov ? c.name : '') || '', 40) || null,
+      neighborhood: c.mah ? cut(c.name, 60) : null,
+      lat: r2(c.lat), lon: r2(c.lon)
+    };
+  }
+  // Günlük dönen anonim cihaz jetonu: { d: UTC günü, t: rastgele 32 onaltılık }. Gün değişince yenilenir (kalıcı kimlik yok).
+  function devToken(now, store) {
+    var day = new Date(now).toISOString().slice(0, 10), cur = store && store.get();
+    if (cur && cur.d === day && typeof cur.t === 'string' && /^[0-9a-f]{32}$/.test(cur.t)) return cur.t;
+    var t = '', i, a = null;
+    try { if (typeof crypto !== 'undefined' && crypto.getRandomValues) { a = new Uint8Array(16); crypto.getRandomValues(a); } } catch (e) { a = null; }
+    for (i = 0; i < 16; i++) { var b = a ? a[i] : Math.floor(Math.random() * 256); t += (b < 16 ? '0' : '') + b.toString(16); }
+    if (store) store.set({ d: day, t: t });
+    return t;
+  }
+  function buildRecord(snap, type, answer, detail, tip, now, dev) {
+    snap = snap || {}; var c = snap.city || {}, L = locFields(c);
     return {
       v: 1,
       timestamp: new Date(now).toISOString(),
       location_id: cut(c.id, 80),
-      province: cut(c.prov || (c.mah || c.dist ? '' : c.admin) || '', 40) || null,
-      district: cut(c.dist || (c.prov ? c.name : '') || '', 40) || null,
-      neighborhood: c.mah ? cut(c.name, 60) : null,
-      lat: r2(c.lat), lon: r2(c.lon),
+      province: L.province, district: L.district, neighborhood: L.neighborhood,
+      lat: L.lat, lon: L.lon,
+      dev: dev || null,
       weather_code: num(snap.code), temperature: r1(snap.temp), apparent_temperature: r1(snap.feels),
       precipitation: r1(snap.precip), precipitation_probability: num(snap.pop) === null ? null : Math.round(snap.pop),
       wind_speed: r1(snap.wind), wind_gust: r1(snap.gust),
@@ -118,7 +139,7 @@
   function qRead(now) { var q = jget(KEY_Q, []); return Array.isArray(q) ? q.filter(function (r) { return r && r.timestamp && now - Date.parse(r.timestamp) < Q_TTL; }).slice(-Q_MAX) : []; }
   function qWrite(q) { ls(KEY_Q, q.length ? JSON.stringify(q.slice(-Q_MAX)) : null); }
 
-  var pure = { kindOf: kindOf, weatherOptions: weatherOptions, adviceOptions: adviceOptions, tipHasFollowUp: tipHasFollowUp, cdKey: cdKey, cdActive: cdActive, cdPrune: cdPrune, buildRecord: buildRecord, CD_MS: CD_MS, Q_MAX: Q_MAX, Q_TTL: Q_TTL, MAX_PER_SCREEN: MAX_PER_SCREEN };
+  var pure = { locFields: locFields, devToken: devToken, kindOf: kindOf, weatherOptions: weatherOptions, adviceOptions: adviceOptions, tipHasFollowUp: tipHasFollowUp, cdKey: cdKey, cdActive: cdActive, cdPrune: cdPrune, buildRecord: buildRecord, CD_MS: CD_MS, Q_MAX: Q_MAX, Q_TTL: Q_TTL, MAX_PER_SCREEN: MAX_PER_SCREEN };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   if (typeof document === 'undefined') return;
 
@@ -141,7 +162,8 @@
     var f = P.flow; if (!f) return;
     var s = f.snap, html;
     if (f.step === 'thanks') {
-      html = head('', '') + '<div class="fb-thanks" role="status" aria-live="polite">' + TICK + '<p>' + C.esc(f.msg) + '</p></div>';
+      html = head('', '') + '<div class="fb-thanks" role="status" aria-live="polite">' + TICK + '<p>' + C.esc(f.msg) + '</p>' +
+        (f.what ? '<p class="fb-what">' + C.esc(f.what) + '</p>' : '') + '<p class="fb-use">Bu bilgi EYRIVO’nun tahmin doğruluğunu ve önerilerini geliştirmek için kullanılır.</p></div>';
     } else if (f.type === 'weather') {
       var sub = s ? (s.text ? s.text + (s.city ? ' · ' + (s.city.name || '') : '') : '') : '';
       if (f.step === 'ask') html = head('Hava doğru mu?', sub) + '<div class="fb-yn"><button type="button" class="fb-opt yes" data-ans="yes">Evet</button><button type="button" class="fb-opt no" data-ans="no">Hayır</button></div>';
@@ -211,7 +233,7 @@
     var cd = cdPrune(jget(KEY_CD, {}), now);
     if (cdActive(cd, key, now)) return Promise.resolve('cooldown');
     cd[key] = now; ls(KEY_CD, JSON.stringify(cd));
-    var rec = buildRecord(s, f.type, answer, detail, f.tip, now);
+    var rec = buildRecord(s, f.type, answer, detail, f.tip, now, devToken(now, { get: function () { return jget(KEY_DEV, null); }, set: function (v) { ls(KEY_DEV, JSON.stringify(v)); } }));
     if (!BASE()) return Promise.resolve('local');   // tek dosya sürümü: sunucu yok, gönderilemez (yerel kalır)
     var enqueue = function () { var q = qRead(now); q.push(rec); qWrite(q); };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { enqueue(); return Promise.resolve('offline'); }
@@ -220,15 +242,25 @@
       return 'sent';
     }).catch(function () { enqueue(); return 'queued'; });
   }
-  var MSG = { sent: 'Teşekkürler! Geri bildirimin alındı.', queued: 'Geri bildirimin alındı.', cooldown: 'Geri bildirimin alındı.', local: 'Geri bildirimin alındı.', offline: 'Geri bildirim bağlantı geldiğinde gönderilebilir.' };
+  var MSG = { sent: 'Teşekkürler. Gözlemini kaydettik.', queued: 'Teşekkürler. Gözlemin kaydedildi; bağlantı düzelince gönderilecek.', cooldown: 'Teşekkürler. Bu gözlemi az önce kaydetmiştik.', local: 'Teşekkürler. Gözlemini aldık.', offline: 'Teşekkürler. Gözlemin cihazında; bağlantı gelince gönderilecek.' };
+  var ANS = { yes: 'Hava doğru', suitable: 'Öneri uygun', insufficient: 'Öneri yetersiz', unnecessary: 'Öneri gereksiz' };
+  // Teşekkür ekranında gösterilen kısa özet: seçilen gözlemin kendi yazısı
+  function whatLabel(f, answer, detail) {
+    var s = f.snap, list, i;
+    if (detail) {
+      list = f.type === 'weather' ? (function () { var w = weatherOptions(s); return w.options.concat(w.more); })() : adviceOptions(s, f.tip);
+      for (i = 0; i < list.length; i++) if (list[i].id === detail) return list[i].label;
+    }
+    return ANS[answer] || '';
+  }
   function finish(answer, detail) {
     var f = P.flow; if (!f || P.busy) return;
     P.busy = true;
     submit(f, answer, detail).then(function (res) {
       P.busy = false;
       if (P.flow !== f) return;   // kullanıcı bu arada kapattı
-      f.step = 'thanks'; f.msg = MSG[res] || MSG.queued; f.result = res; render();
-      P.timer = setTimeout(function () { close(); }, C.reduceMotion() ? 1200 : 1500);
+      f.step = 'thanks'; f.msg = MSG[res] || MSG.queued; f.what = whatLabel(f, answer, detail); f.result = res; render();
+      P.timer = setTimeout(function () { close(); }, C.reduceMotion() ? 3000 : 3600);
     });
   }
 

@@ -185,7 +185,7 @@
   function cityTitle(c) { return c.mah && c.dist ? c.name + ', ' + c.dist : c.name; }   // mahalle seçiliyse "Göztepe, Kadıköy"
   function favLabel(f) { return f.mah && f.dist ? f.name + ', ' + f.dist : (f.dup && f.admin ? f.name + ' (' + f.admin + ')' : f.name); }   // aynı adlı ilçede il adı da görünür
   function isFav(c) { return state.favs.some(function (f) { return f.id === cityId(c); }); }
-  function cityLabel(c) { if (c.mah && c.prov) return c.prov; return [c.admin && c.admin !== c.name ? c.admin : '', c.country].filter(Boolean).join(', '); }
+  function cityLabel(c) { if (c.gps) return ''; if (c.mah && c.prov) return c.prov; return [c.admin && c.admin !== c.name ? c.admin : '', c.country].filter(Boolean).join(', '); }
 
   // ---------- Gökyüzü + efektler (sadece transform/opacity animasyonu) ----------
   var currentTheme = '', prevT = 0, fxT = 0;
@@ -382,16 +382,22 @@
       '<section class="stats" aria-label="Ayrıntılar">' + humidityCard(c.relative_humidity_2m) + windCard(c.wind_speed_10m, c.wind_direction_10m) + rainCard(outlook, wetNow) + uvCard(uvToday) + '</section>' +
       hourlyCard(h, start, !reduceMotion()) +
       '<section class="card today" id="todayCard" aria-labelledby="h-today"></section>' +
+      '<section class="pol-sec" id="obsCard" aria-label="Bölgedeki son gözlemler" hidden></section>' +
       '<section class="pol-sec" id="starCard" aria-label="Yıldız Gözlem" hidden></section>' +
       '<section class="pol-sec" id="pollenCard" aria-label="Polen" hidden></section>' +
       '<section class="card aq" id="aqCard" aria-labelledby="h-aq"></section>' +
       mapShell() +
-      sunCard({ sunrise: dl.sunrise[0], sunset: dl.sunset[0], time: c.time }) + dailyCard(dl, c.temperature_2m);
+      sunCard({ sunrise: dl.sunrise[0], sunset: dl.sunset[0], time: c.time }) + dailyCard(dl, c.temperature_2m) +
+      '<section class="pol-sec" id="birdCard" aria-label="Kuş Göçü" hidden></section>' +
+      '<section class="pol-sec" id="histCard" aria-label="Geçmişe Yolculuk" hidden></section>';
     if (keepMap) { var ph = $('mapCard'); if (ph) ph.parentNode.replaceChild(keepMap, ph); }
     mark('render-html');
     if (window.HDHourly) window.HDHourly.sync();   // açık saatlik panel varsa: aynı şehir → yeni veriyle yenile, farklı şehir → kapat
     if (window.HDDetail) window.HDDetail.sync();   // aynı kural: açık ayrıntı ekranı
     if (window.HDFeedback) window.HDFeedback.sync();
+    if (window.HDBird) window.HDBird.sync();   // Kuş Göç Takvimi: yerel JSON, canlı veri yok; göç dönemi dışında kart yok
+    if (window.HDHistory) window.HDHistory.sync();   // Geçmişe Yolculuk: tembel, tek Archive isteği, 30 gün önbellek; veri yoksa kart yok
+    if (window.HDObs) window.HDObs.sync();   // 0.8.1 bölgesel gözlem: tembel, ayrı istek; eşik sağlanmazsa kart yok
     if (window.HDStars) window.HDStars.sync();   // yıldız gözlem: mevcut hava verisinden yerel hesap, ek istek yok
     if (window.HDPollen) window.HDPollen.sync();   // polen: ana çizimden sonra, boşta ve ayrı istekle
     fillInsights();
@@ -877,6 +883,7 @@
   }
   function loadCity(city, o) {
     o = o || {};
+    if (!o.auto && !o.silent && !o.cold) state.userNav = true;   // kullanıcı kendi seçti: açılış konumu bunu ezmez
     if (state.loadCtl) state.loadCtl.abort();
     var ctl = state.loadCtl = new AbortController(), timer = 0, cached = false, aqJob = null, showCache = null;
     state.busy = ctl; state.busyT = Date.now();
@@ -1130,13 +1137,16 @@
   // Saatlik ayrıntı paneli (hourly.js): veri/durum erişimi yalnızca bu dar arayüzle; panel kendi isteği atmaz
   var panelCtx = {
     state: state, $: $, esc: esc, round: round, num: num, deg: deg, hm: hm, parts: parts, describe: describe, weatherIcon: weatherIcon, uiIcon: uiIcon,
-    windFrom: windFrom, uvClass: uvClass, UV_CLASSES: UV_CLASSES, reduceMotion: reduceMotion, stamp: stamp, cityId: cityId, app: el.app, store: store, feedbackSnap: fbSnapshot
+    windFrom: windFrom, uvClass: uvClass, UV_CLASSES: UV_CLASSES, reduceMotion: reduceMotion, stamp: stamp, cityId: cityId, app: el.app, store: store, feedbackSnap: fbSnapshot, cityTitle: cityTitle
   };
   if (window.HDHourly) window.HDHourly.init(panelCtx);
   if (window.HDDetail) window.HDDetail.init(panelCtx);
   if (window.HDFeedback) window.HDFeedback.init(panelCtx);
   if (window.HDPollen) window.HDPollen.init(panelCtx);
   if (window.HDStars) window.HDStars.init(panelCtx);
+  if (window.HDObs) window.HDObs.init(panelCtx);
+  if (window.HDHistory) window.HDHistory.init(panelCtx);
+  if (window.HDBird) window.HDBird.init(panelCtx);
 
 
   // ---------- Başlangıç ----------
@@ -1150,4 +1160,49 @@
     hideSplash();
     loadCity(startCity, { silent: true });
   } else loadCity(startCity, { cold: true });
+
+  // ---------- Açılışta mevcut konum ----------
+  // Her yeni açılışta önce son kullanılan konum hızlıca açılır; arka planda tarayıcının kendi konum izni/sistemiyle mevcut konum alınır.
+  // Başarılıysa o koordinata geçilir (tüm konuma bağlı modüller loadCity → render zinciriyle yenilenir). Hata/ret/zaman aşımı/çevrimdışı: sessizce mevcut davranış.
+  // Favorilere dokunulmaz. Kullanıcı bu arada kendi seçim yaptıysa (ya da arama/panel açıksa) konum sonucu uygulanmaz. Yalnızca açılışta; sonradan otomatik geri dönüş yok.
+  var GEO_KEY = 'hd2:geo';
+  function locating(on) { document.documentElement.classList.toggle('locating', !!on); }
+  function userBusy() { return !!state.userNav || (el.q && (el.q.value || document.activeElement === el.q)) || !!document.querySelector('.sheet-wrap.open'); }
+  function applyLocation(lat, lon) {
+    var L = window.HDLocate, tries = 0;
+    (function go() {
+      if (boot.booting && tries++ < 150) { setTimeout(go, 150); return; }   // açılış animasyonu bitsin
+      if (userBusy()) return;
+      var d = L.decide(lat, lon, state.city, state.favs);
+      if (d.act === 'keep') return;
+      var cold = !state.data;
+      if (d.act === 'fav') { loadCity(d.city, { auto: true, cold: cold }); return; }
+      var c = L.makeCity(lat, lon);   // ad tahmini yok: yalnızca 'Mevcut konum'; veri gerçek koordinatla gelir
+      if (state.city && cityId(state.city) === c.id) return;
+      loadCity(c, { auto: true, cold: !state.data });
+    })();
+  }
+  function startLocate() {
+    var L = window.HDLocate;
+    if (!L || !navigator.geolocation || navigator.onLine === false) return;
+    var rec = null; try { rec = store(GEO_KEY); } catch (e) { rec = null; }
+    var ask = function (st) {
+      if (!L.shouldAsk(st, rec, Date.now())) return;
+      locating(true); var lt = setTimeout(function () { locating(false); }, 10000);
+      try {
+        navigator.geolocation.getCurrentPosition(function (p) {
+          clearTimeout(lt); locating(false);
+          var c = p && p.coords; if (!c || !L.validCoords(c.latitude, c.longitude, c.accuracy)) return;
+          if (rec) { rec = null; try { store(GEO_KEY, {}); } catch (e) { } }
+          applyLocation(c.latitude, c.longitude);
+        }, function (err) {
+          clearTimeout(lt); locating(false);
+          if (err && err.code === 1) { try { store(GEO_KEY, { deny: Date.now() }); } catch (e) { } }   // reddedildi: tekrar tekrar sormayız
+        }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
+      } catch (e) { clearTimeout(lt); locating(false); }
+    };
+    if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: 'geolocation' }).then(function (r) { ask(r.state); }, function () { ask(''); });
+    else ask('');
+  }
+  startLocate();
 })();

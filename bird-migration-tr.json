@@ -1,0 +1,96 @@
+{
+  "v": 1,
+  "updated": "2026-11",
+  "kind": "mevsimsel-takvim",
+  "notice": "Canlı kuş verisi DEĞİL. Aylık, grup düzeyinde, kaba bölgesel mevsimsel takvim. Seviyeler canlı kuş sayısı değildir.",
+  "method": "Seviye (h=Yoğun, m=Orta, l=Düşük) kaynaklı sayım çalışmalarındaki geçiş pencerelerinden elle türetildi: h = çalışmada adı geçen doruk/ana geçiş penceresi bu aya düşüyor; m = geçiş belgelenmiş ama doruk dışı ya da doruk bilgisi yok; l = dönemin başı/sonu, çok az birey, komşu saha veya genel çerçeve (düşük güven). w = kışlama (göç değil). Bir ay, göç gruplarının en yükseğini alır. Haftalık/günlük çözünürlük bilinçli olarak yok: kaynaklar bunu bölge için güvenle vermiyor. Ay eksikse 'kayıtlı belirgin geçiş yok' demektir, göçün hiç olmadığı anlamına gelmez. 'q:1' = dönemin ay içi dağılımı doğrulanamadı.",
+  "groups": {
+    "storks": { "name": "Leylekler", "short": "Leylek", "phrase": "Leylek" },
+    "raptors": { "name": "Yırtıcı kuşlar", "short": "Yırtıcılar", "phrase": "Yırtıcı kuş" },
+    "pelicans": { "name": "Pelikanlar", "short": "Pelikan", "phrase": "Pelikan" },
+    "cranes": { "name": "Turnalar", "short": "Turna", "phrase": "Turna" },
+    "waterfowl": { "name": "Su kuşları", "short": "Su kuşları", "phrase": "Su kuşu" }
+  },
+  "confidence": {
+    "count": "Bu bölgede yapılmış sayım çalışmalarına dayanır.",
+    "neighbor": "Komşu sahadaki (Gürcistan, Batumi) sayımlara dayanır; Türkiye tarafında sayım verisi kullanılmadı.",
+    "partial": "Kısmen bölgesel izleme, kısmen genel çerçeve.",
+    "general": "Türkiye'deki geçiş hatlarında yapılan sayımlardan türetilmiş genel çerçeve; düşük güven."
+  },
+  "sources": {
+    "S1": { "t": "Arslangündoğdu ve ark. (2018), Soaring bird migration research at the Bosphorus Strait, Turkey. Applied Ecology and Environmental Research 16(6): 7953–7968", "use": "Boğaz ilkbahar geçiş pencereleri (2007 sayımı)", "lic": "Telif sahibi: ALÖKI Kft.; yalnızca olgusal dönem bilgisi alındı, metin/tablo kopyalanmadı" },
+    "S2": { "t": "Üner ve ark., Spring migration of soaring birds over the Bosphorus, Turkey. Sandgrouse 32(1): 20–33 (OSME)", "use": "Boğaz ilkbahar doruk tarihleri (2006 sayımı)", "lic": "Açık lisans belirtilmemiş; yalnızca olgusal dönem bilgisi alındı" },
+    "S3": { "t": "Süzülen kuşların Türkiye İstanbul Boğazı üzerinden 2007 sonbahar göçü. İstanbul Üniversitesi Orman Fakültesi Dergisi 61(2)", "use": "Boğaz sonbahar (Eylül 2007) doruk tarihleri", "lic": "Açık lisans belirtilmemiş; yalnızca olgusal dönem bilgisi alındı" },
+    "S4": { "t": "Autumn migration of soaring birds at Bosporus: validating a new survey station design. Bird Study (2014)", "use": "Boğaz sonbahar (22 Eylül–10 Ekim 2008) ve önerilen sezon aralığı", "lic": "© British Trust for Ornithology; yalnızca olgusal dönem bilgisi alındı" },
+    "S5": { "t": "Soaring bird migration in 2015 spring at Belen Pass, Hatay, Turkey. Biharean Biologist (2020)", "use": "Belen ilkbahar (6 Mart–20 Mayıs 2015) türler ve hareketlenme tarihleri", "lic": "© Biharean Biologist; yalnızca olgusal dönem bilgisi alındı" },
+    "S6": { "t": "Batumi Raptor Count: autumn raptor migration count data from the Batumi bottleneck, Republic of Georgia. ZooKeys 836 (2019)", "use": "Doğu Karadeniz/Kafkasya sonbahar sayım sezonu (17 Ağustos–16 Ekim) ve doruk pencereleri", "lic": "CC BY 4.0" },
+    "S7": { "t": "Trektellen.org, Batumi–Shuamta 2017 aylık toplamlar", "use": "S6'daki pencerelerin ay bazında karşılaştırılması (yalnızca doğrulama; sayı kopyalanmadı)", "lic": "Veri kopyalanmadı; yalnızca ay düzeyinde karşılaştırma" },
+    "S8": { "t": "BirdingPlaces.eu, Belen Pass (2020)", "use": "Belen'de sonbahar geçişinin en iyi dönem olduğu ve başlıca grupların niteliksel tarifi", "lic": "Lisans belirtilmemiş; yalnızca niteliksel bilgi" },
+    "S9": { "t": "Doğa Derneği / BirdLife Turkey, Karacabey Taşkın Ovası pelikan durağı izlemesi (Champions of the Flyway)", "use": "Marmara'da ilkbahar pelikan geçişi (Mart ortası–Nisan sonu, Nisan'ın ilk haftası doruk)", "lic": "Lisans belirtilmemiş; yalnızca olgusal dönem bilgisi alındı" },
+    "S10": { "t": "T.C. Tarım ve Orman Bakanlığı DKMP, Kış Ortası Su Kuşu Sayımı (KOSKS) Raporu 2022", "use": "Su kuşlarının Ocak–Şubat başında sulak alanlarda toplandığı (mevsimsel hareketlerin en düşük olduğu) dönem", "lic": "Lisans belirtilmemiş; yalnızca olgusal dönem bilgisi alındı" }
+  },
+  "common": {
+    "01": { "s": "winter", "g": { "waterfowl": "w" }, "src": ["S10"] },
+    "02": { "s": "winter", "g": { "waterfowl": "w" }, "src": ["S10"] }
+  },
+  "regions": [
+    {
+      "id": "istanbul_bosphorus", "name": "İstanbul / Boğaz geçiş hattı", "conf": "count",
+      "note": "Boğaz, süzülen kuşların (leylek, yırtıcı kuşlar) kıtalar arası geçişte yoğunlaştığı hat. Sayımlar Boğaz tepelerinde yapıldı.",
+      "months": {
+        "03": { "s": "spring", "g": { "storks": "h", "raptors": "h" }, "src": ["S1", "S2"] },
+        "04": { "s": "spring", "g": { "storks": "h", "raptors": "h", "pelicans": "l" }, "src": ["S1", "S2"] },
+        "05": { "s": "spring", "g": { "storks": "l", "raptors": "h", "pelicans": "l" }, "src": ["S1", "S2"] },
+        "06": { "s": "spring", "g": { "raptors": "l" }, "src": ["S1", "S2"] },
+        "08": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S4"] },
+        "09": { "s": "autumn", "g": { "storks": "h", "raptors": "h" }, "src": ["S3", "S4"] },
+        "10": { "s": "autumn", "g": { "storks": "m", "raptors": "m" }, "src": ["S4"] }
+      }
+    },
+    {
+      "id": "marmara", "name": "Marmara", "conf": "partial",
+      "note": "Pelikan durağı için bölgesel izleme var; leylek ve yırtıcı kuşlar için Boğaz ve çevresindeki sayımlardan türetilmiş genel çerçeve kullanıldı.",
+      "months": {
+        "03": { "s": "spring", "g": { "pelicans": "m", "storks": "l", "raptors": "l" }, "src": ["S9", "S1"] },
+        "04": { "s": "spring", "g": { "pelicans": "h", "storks": "l", "raptors": "l" }, "src": ["S9", "S1"] },
+        "05": { "s": "spring", "g": { "storks": "l", "raptors": "l" }, "src": ["S1"] },
+        "08": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S4"] },
+        "09": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S3"] },
+        "10": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S4"] }
+      }
+    },
+    {
+      "id": "hatay_belen", "name": "Hatay / Belen geçiş hattı", "conf": "count",
+      "note": "İlkbahar için Belen Geçidi'nde 2015 sayımı var; sonbahar için yalnızca niteliksel bilgi bulundu (ay içi dağılım doğrulanmadı).",
+      "months": {
+        "03": { "s": "spring", "g": { "storks": "m", "raptors": "l", "pelicans": "l", "cranes": "l" }, "src": ["S5"] },
+        "04": { "s": "spring", "g": { "storks": "h", "raptors": "l", "pelicans": "l", "cranes": "l" }, "src": ["S5"] },
+        "05": { "s": "spring", "g": { "storks": "l", "raptors": "l", "pelicans": "l", "cranes": "l" }, "q": 1, "src": ["S5"] },
+        "08": { "s": "autumn", "g": { "raptors": "l" }, "q": 1, "src": ["S8"] },
+        "09": { "s": "autumn", "g": { "raptors": "m", "storks": "m" }, "q": 1, "src": ["S8"] },
+        "10": { "s": "autumn", "g": { "raptors": "m", "storks": "m" }, "q": 1, "src": ["S8"] }
+      }
+    },
+    {
+      "id": "east_blacksea", "name": "Doğu Karadeniz / Kafkasya geçiş hattı", "conf": "neighbor",
+      "note": "Dönemler komşu Batumi (Gürcistan) sayım istasyonuna dayanır; kuşlar buradan Türkiye'nin kuzeydoğusuna devam eder. İlkbahar için kaynak bulunamadı.",
+      "months": {
+        "08": { "s": "autumn", "g": { "raptors": "m", "storks": "l" }, "src": ["S6", "S7"] },
+        "09": { "s": "autumn", "g": { "raptors": "h", "storks": "m" }, "src": ["S6", "S7"] },
+        "10": { "s": "autumn", "g": { "raptors": "m", "storks": "m" }, "src": ["S6", "S7"] }
+      }
+    },
+    {
+      "id": "tr_general", "name": "Türkiye geneli (belirgin geçiş hattı dışı)", "conf": "general",
+      "note": "Bu konum sayım yapılan geçiş hatlarının dışında. Dönemler yalnızca Türkiye'deki geçiş hatlarında yapılan sayımların genel çerçevesidir; yerel yoğunluk bilinmiyor.",
+      "months": {
+        "03": { "s": "spring", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S1", "S5"] },
+        "04": { "s": "spring", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S1", "S5"] },
+        "05": { "s": "spring", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S1", "S5"] },
+        "08": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S4", "S6"] },
+        "09": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S3", "S6"] },
+        "10": { "s": "autumn", "g": { "storks": "l", "raptors": "l" }, "q": 1, "src": ["S4", "S6"] }
+      }
+    }
+  ]
+}
